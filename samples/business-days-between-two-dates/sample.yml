@@ -1,0 +1,172 @@
+# The card of this sample. tools/build_docs.py writes README.md (overview) and SETUP.md (step by step) from it and from flow/.
+# Everything the code already says (subflows, contract, UI elements, line counts, settings, regions) is NOT repeated here.
+# Quote any text that holds a comma inside { }.
+id: business-days-between-two-dates
+version: 1.0.0             # x.y.z : see CONTRIBUTING, section Versions
+title: Business days between two dates
+summary: "Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts."
+category: "Dates & time"
+kind: component            # flow = one job end to end ; component = a reusable local function + an example call
+level: intermediate        # beginner | intermediate | advanced
+minutes: 15                # setup time, from zero to a successful run
+tags: [dates, business-days, working-days, holidays, powershell, api, local-function]
+techniques: [local-function, errors-as-outputs, powershell-script, open-data-api, json-by-regex, test-cases-file]
+authors: [Anne (AI agent), HyperAutomatisation]
+
+problem: |
+  A deadline, a service level or a pay period is counted in **business days**: no Saturday, no Sunday, no holiday.
+  PAD has no action for it: *Subtract dates* returns calendar days. And the holidays change every year and from one
+  country to the next: a list typed in the flow is wrong the following year.
+
+solution: |
+  Two local functions, called one after the other. **`Get_Public_Holidays`** (4 inputs, 3 outputs) asks a public API
+  for the public holidays of a country: France in the sample, another country by changing its ISO code, a region by
+  adding its code. **`Count_Business_Days`** (4 inputs, 6 outputs) counts in **one *Run PowerShell script* action**:
+  the calendar days, minus the days off of the week, minus the holidays that fall on a working day. The days your
+  company adds (bridge days, closures) come from a CSV file and join the same list.
+
+  Both functions return a flag and a message and never stop the flow. On 51 test cases the count is the one Excel
+  gives with NETWORKDAYS.INTL.
+
+design:
+  measured: "2026-10-06, in the designer at a run delay of 100 ms, for the year 2026"
+  alternatives:
+    - approach: "A loop over every day (*Add to datetime* and the `.DayOfWeek` property)"
+      time: 282 s
+      result: Saturdays and Sundays only. No holidays.
+      verdict: "Rejected: three actions per day, so the time grows with the period."
+    - approach: The same rules as the function written with about 50 native actions
+      time: "26 s with a calendar of 11 lines"
+      result: The same counts on the 59 test cases.
+      verdict: "Rejected: about a second more for each holiday. The way to go where script actions are blocked."
+    - approach: "**Chosen: one *Run PowerShell script* action in a local function**"
+      time: "5 s, with or without holidays, for one week as for thirty years"
+      result: "The same counts on the 59 test cases, the numbers of NETWORKDAYS.INTL on 51."
+      verdict: "A count paid action by action costs time. In one script action it takes about 1 s; the rest is the function around it."
+
+improve:
+  title: "Where the holidays come from: a file, a public API, or both"
+  why: |
+    `Count_Business_Days` takes a list of dates and does not care where it comes from. Three sources, each run in the
+    designer on 2026-10-07 for the year 2026. The public holidays of France given by the API (11 dates) are the same
+    as those of the official French calendar (`calendrier.api.gouv.fr`).
+  table:
+    head: [Source, What you maintain, "Result for 2026 (261 weekdays)", Good for]
+    rows:
+      - ["A. A file with every day off (`Holidays_2026.csv`, 11 lines)", "Every date, every year", "254 business days: 7 holidays on a working day", "A first version; a calendar that follows no country"]
+      - ["B. The public API (`Get_Public_Holidays`, country `FR`)", "Nothing", "252 business days: 9 of the 11 public holidays of France fall on a working day", "Public holidays that stay right every year"]
+      - ["B. The same API, another country (`DE`)", "Nothing", "254 business days: 7 of the 9 nationwide holidays of Germany fall on a working day", "One flow for several countries"]
+      - ["B. The same API with a region (`FR` and `FR-GE-MO`, Moselle)", "Nothing", "251 business days: 13 dates, Good Friday is added and 26 December is a Saturday", "Regions with days of their own"]
+      - ["C. Both: the API (`FR`) and a file of company days (`Company_Days_2026.csv`, 6 lines)", "Only the days your company adds", "247 business days: 9 public holidays and 5 company days; 25 December is in both and counted once", "The complete answer: bridge days and closures on top of the public holidays"]
+  steps:
+    - "`Main` does C. Its first region holds the three settings: `txt_CountryCode`, `txt_SubdivisionCode` and `txt_CompanyDaysFile`."
+    - "A file only: empty `txt_CountryCode` and give your file in `txt_CompanyDaysFile` (`C:\\Work\\Calendar\\Holidays_2026.csv` in the sample). One day per line, in a column named `Date`."
+    - "The API only: give the ISO code of the country in `txt_CountryCode` and empty `txt_CompanyDaysFile`."
+    - "Another country: change `FR` to one of the 36 codes of the API, in capitals: `DE`, `BE`, `ES`, `IT`, `NL`, `PT`, `PL`, `CH`, `AT`, `IE`, `LU` ... The full list: `https://openholidaysapi.org/Countries`."
+    - "A region: `txt_SubdivisionCode` adds the days of a region to the nationwide ones. `FR-GE-MO` (Moselle) adds Good Friday and 26 December, `DE-BY` four Bavarian days. The codes: `https://openholidaysapi.org/Subdivisions?countryIsoCode=FR`."
+    - "Another API: only the address and the two regular expressions of region 3 of `Get_Public_Holidays` change. Two others were looked at: the official French calendar (`calendrier.api.gouv.fr`: France and its overseas territories only, Licence Ouverte) and Nager.Date (200 countries, but its terms ask for a sponsorship for commercial use)."
+  pictures:
+    - {file: assets/source-file-only.png, caption: "A. A file only: 254 business days", width: 480}
+    - {file: assets/source-api-france.png, caption: "B. The API only, France: 252 business days", width: 480}
+    - {file: assets/source-api-germany.png, caption: "B. The API only, Germany: 254 business days", width: 480}
+    - {file: assets/source-api-moselle.png, caption: "B. The API with the subdivision FR-GE-MO: 251 business days", width: 480}
+
+performance:
+  - "Tested run of 2026-10-07 (designer, run delay 100 ms): Main reads the file, calls the API for France, counts the year 2026 and shows its message in 21.1 s."
+  - "Quick try of 2026-10-07 (designer, run delay 100 ms): the API called for France and the year 2026 counted in 13.7 s, message included."
+  - "`Count_Business_Days` at a run delay of 100 ms: 5.0 to 5.3 s per call, with or without holidays, from one week to thirty years (eight calls measured on 2026-10-06). The script action alone answers in about 1.1 s; the rest is the 18 native actions of the function around it."
+  - "`Get_Public_Holidays` at a run delay of 1 ms: 2.7 to 3.5 s for one year (one call to the API), 10.7 s for the eleven years 2020 to 2030."
+  - "Tests: 59 calls of `Count_Business_Days` in 4 min 29 s at a run delay of 1 ms."
+  - "Every time was measured in the designer, which draws each action on screen (about 0.24 s per action at a run delay of 100 ms). A run from the console was not measured."
+
+limits:
+  - "The public holidays come from OpenHolidays API (`openholidaysapi.org`), an open data project: ODbL licence, free of charge, commercial use allowed, no key. It promises no availability. When it does not answer, `Get_Public_Holidays` says so and `Main` stops with the message; that case was not tested. Keep a file for the days without network."
+  - "The API covers 36 countries (Europe, Brazil, Mexico, South Africa) and years from 2020. For France, 2030 was answered and 2035 came back empty on 2026-10-07. An empty year is reported as an error, never counted as a year without holidays."
+  - "From the API only public, full-day, nationwide days are kept, plus those of the subdivision asked. School holidays and half days are left out."
+  - "The answer of the API is read by regular expressions that expect its present layout. If the layout changes, the function reports that no holiday was returned."
+  - "Script actions can be blocked by a data loss prevention (DLP) policy of the tenant, which can also restrict the addresses *Invoke web service* may call. The version of the count in native actions is not part of this sample."
+  - "Dates are texts written `yyyy-MM-dd`. Convert a datetime variable first (*Convert datetime to text*, custom format `yyyy-MM-dd`). A date with a time, or written `2026-3-2`, is refused with a message."
+  - "Both dates are counted, as in NETWORKDAYS.INTL. For the days elapsed after a start date, give the day after it as the start."
+  - "Days off are whole days, the same every week. Half days, shifts and a calendar that changes inside the period are not handled."
+  - "A value that holds the character `|` is refused by `Count_Business_Days`: it separates the values given to the script. The script uses nothing beyond Windows PowerShell 5.1."
+  - "The Flow checker of the designer lists outputs of the functions as unused variables: an output is set, never read. Nothing to fix."
+  - "`Count_Business_Days` was tested on dates from 1949 to 2055, on a PC set to English (United States)."
+
+pictures:
+  result: {file: assets/result.png, caption: "The message at the end of Main: France, 2026, public holidays from the API and company days from the file"}
+  variables_pane: {file: assets/variables-pane.png, caption: "The Variables pane of Count_Business_Days, section Local: Input 4, Output 6"}
+  canvas:
+    2-Count_Business_Days.txt: {file: assets/canvas.png, caption: "Count_Business_Days after the paste: the four inputs in one text, then the script action"}
+    3-Get_Public_Holidays.txt: {file: assets/canvas-holidays.png, caption: "Get_Public_Holidays after the paste: one call per year, the dates read by a regular expression"}
+    1-Main.txt: {file: assets/canvas-main.png, caption: "Main after the paste: the settings to change"}
+
+apps: []
+
+files:
+  - put: input/*
+    into: C:\Work\Calendar
+    note: "Create the folder first. Company_Days_2026.csv holds the six company days read by Main. Holidays_2026.csv is a calendar with every day off, for the file-only setting and for the optional subflow Tests, which also reads Business_Days_Cases.csv."
+
+quick_try:
+  file: 4-Quick_Try.txt
+  minutes: 2
+  says: The whole method in one block pasted into Main, for France and the year 2026. No subflow, no input or output to create, no file. It calls the API, so it needs an internet connection.
+  files: false
+  apps: []
+  expect:
+    - "After about 14 s, a message: From 2026-01-01 to 2026-12-31 in FR: 252 business days. That is 365 calendar days, minus 104 weekend days, minus 9 public holidays that fall on a working day (11 read from the API)."
+  picture: {file: assets/quick-try-message.png, caption: The message at the end of the quick try}
+  option: "Change txt_CountryCode in the first region to another country of the API (DE, BE, ES, IT ...), or the two dates, and run again."
+flow_name: Business days between two dates
+
+subflows:
+  1-Main.txt: {does: "The complete example: reads the company days from a file and the public holidays of a country from the API, merges them, calls the count, shows the result and its sources."}
+  2-Count_Business_Days.txt: {does: "The count: two dates, the days off of the week and a list of holidays in; the count, three details, a flag and a message out. One script action. Never stops the flow."}
+  3-Get_Public_Holidays.txt: {does: "The public holidays of a country for the years of a period, from a public API: a country code, an optional region and two dates in; a list of dates, a flag and a message out. Never stops the flow."}
+  4-Quick_Try.txt: {does: "The quick try: the API call and the count in one block, without the functions.", optional: true}
+  5-Tests.txt: {does: "Replays the 59 cases of Business_Days_Cases.csv through Count_Business_Days and writes a report next to it: one line per case, the total at the end. Run it with Run from here on its first action.", optional: true}
+
+variables:
+  in_loc_txt_StartDate: {holds: "First day of the period, as yyyy-MM-dd; it is counted", e.g: '2026-01-01'}
+  in_loc_txt_EndDate: {holds: "Last day of the period, as yyyy-MM-dd; it is counted. Earlier than the start: the count is negative", e.g: '2026-12-31'}
+  in_loc_txt_WeekendDays: {holds: "The days off of every week, English day names; empty = none", e.g: 'Saturday,Sunday'}
+  in_loc_lst_Holidays: {holds: "The holidays, a list of yyyy-MM-dd texts; an empty list = none. An item listed twice counts once, an empty item is skipped", e.g: "['2026-01-01', '2026-12-25']"}
+  in_loc_txt_CountryCode: {holds: "ISO code of the country, two capital letters, one of the 36 countries of the API", e.g: FR}
+  in_loc_txt_SubdivisionCode: {holds: "Code of a region whose own days are added to the nationwide ones; empty = none", e.g: FR-GE-MO}
+  out_loc_bool_Ok: {holds: True when the function did its work, e.g: 'True'}
+  out_loc_num_BusinessDays: {holds: "Business days of the period, both dates included; negative when the period is given backwards", e.g: '247'}
+  out_loc_num_CalendarDays: {holds: "Calendar days of the period, both dates included", e.g: '365'}
+  out_loc_num_WeekendDays: {holds: Days of the period that fall on a day off of the week, e.g: '104'}
+  out_loc_num_Holidays: {holds: "Holidays inside the period that fall on a working day, each counted once", e.g: '14'}
+  out_loc_lst_Holidays: {holds: "The public holidays of every year the period touches, as yyyy-MM-dd texts; empty when out_loc_bool_Ok is False", e.g: "['2026-01-01', '2026-04-06', ...]"}
+  out_loc_txt_Error: {holds: "Why it failed; empty when out_loc_bool_Ok is True", e.g: 'No public holiday returned for XX in 2026: the country or the year is not covered by the API'}
+
+run:
+  subflow: Main
+  expect:
+    - "After about 21 s, a message: From 2026-01-01 to 2026-12-31: 247 business days. That is 365 calendar days, minus 104 weekend days, minus 14 holidays that fall on a working day. Holidays read: 11 public (API, country FR) and 6 company days (file)."
+    - "The 14 holidays: 9 of the 11 public holidays of France (15 August is a Saturday, 1 November a Sunday) and 5 of the 6 company days (25 December is in both lists and counted once)."
+    - "Optional, tab `Tests`: right-click its first action, **Run from here**. After about four and a half minutes at a run delay of 1 ms, `C:\\Work\\Calendar\\tests-Business_Days-<date>-<time>.txt` holds one line per case and ends with `TOTAL : 59 PASS, 0 FAIL`, as `expected/tests-report.txt`. The expected counts of the file come from Excel (NETWORKDAYS.INTL) and from a separate day by day count that agreed on every case; add a line for each case of yours."
+  picture: {file: assets/result.png, caption: The message at the end of the run}
+
+troubleshooting:
+  - when: 'The message says "Public holidays not read: No public holiday returned for ... the country or the year is not covered by the API".'
+    do: "The code is not one of the 36 countries of the API, or the year is outside its data (from 2020; 2035 was empty for France). Check the code at https://openholidaysapi.org/Countries, or use a file for that period."
+  - when: 'The message says "Public holidays not read: Country must be a two-letter ISO code in capitals ...".'
+    do: "Write FR, not fr or FRA. The subdivision is a code of the API such as FR-GE-MO, without a space."
+  - when: 'The message says "Count failed: Start date is not a yyyy-MM-dd date: ...".'
+    do: "The functions read dates written year-month-day with zeros, such as 2026-03-02. For a datetime variable, add Convert datetime to text with the custom format yyyy-MM-dd before the call."
+  - when: 'The message says "Count failed: Weekend days must be English day names ...".'
+    do: "Write the days off as Saturday,Sunday or Friday,Saturday. Leave the text empty when every day is worked."
+  - when: "The Flow checker reports unused variables in the two functions."
+    do: "They are outputs: an output is set, never read. Do not apply the suggested fix: it would remove the output."
+  - when: The Errors pane lists unknown variables after the paste into a function.
+    do: A contract name differs from the table of the step that creates them. Fix the name in the Variables pane (capitals count); the errors disappear.
+  - when: A new subflow appears under Global, not Local.
+    do: The scope is easily lost while typing the name. Delete the subflow and create it again; check Local just before Save.
+
+tested:
+  - {pad: 2.72.183, date: 2026-10-07, path: Full flow (file and API for France), result: pass}
+  - {pad: 2.72.183, date: 2026-10-07, path: Quick try, result: pass}
+  - {pad: 2.72.183, date: 2026-10-07, path: "File only, API only, Germany, Moselle", result: pass}
+  - {pad: 2.72.183, date: 2026-10-07, path: Tests (59 cases), result: pass}

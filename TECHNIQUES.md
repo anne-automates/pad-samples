@@ -12,6 +12,7 @@ A technique is one reusable idea you can carry to another flow. Each sample list
 
 A local subflow with declared inputs and outputs, called in one CALL line. Copy it into any flow, create its variables, call it.
 
+- [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
 - [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md): Turn any Excel range into an HTML table that keeps its look (fills, fonts, borders, number formats), ready for an Outlook email.
 - [Email triage by a local AI model](samples/local-ai-email-triage/README.md): Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.
 
@@ -21,6 +22,7 @@ A local subflow with declared inputs and outputs, called in one CALL line. Copy 
 
 The subflow sets every output first, then reports a failure through a flag and a message. The caller decides what to do; the flow never stops inside a reusable part.
 
+- [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
 - [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md): Turn any Excel range into an HTML table that keeps its look (fills, fonts, borders, number formats), ready for an Outlook email.
 - [Email triage by a local AI model](samples/local-ai-email-triage/README.md): Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.
 
@@ -30,6 +32,7 @@ The subflow sets every output first, then reports a failure through a flag and a
 
 A single Run PowerShell script action covers the missing capability; its inputs are PAD variables, its output is parsed back into variables.
 
+- [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
 - [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md): Turn any Excel range into an HTML table that keeps its look (fills, fonts, borders, number formats), ready for an Outlook email.
 
 <a id="excel-com"></a>
@@ -70,6 +73,7 @@ The Invoke Local LLM action calls a model that runs on the PC (Ollama), with no 
 
 Each field of a JSON answer is read with its own regular expression and checked against the allowed values, so a missing or unexpected field becomes a clear error instead of stopping the flow.
 
+- [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
 - [Email triage by a local AI model](samples/local-ai-email-triage/README.md): Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.
 
 <a id="trained-classifier"></a>
@@ -79,3 +83,19 @@ Each field of a JSON answer is read with its own regular expression and checked 
 An embedding model turns each text into a vector; a logistic regression learns your categories from a few dozen sorted examples in seconds on the CPU, and gives a confidence that sends doubtful cases to a person.
 
 - [Email triage by a local AI model](samples/local-ai-email-triage/README.md): Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.
+
+<a id="test-cases-file"></a>
+
+## Test cases replayed from a file
+
+A subflow replays the lines of a CSV file through the function and compares each result with a value computed elsewhere (here by Excel). A new test is a new line in the file.
+
+- [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
+
+<a id="open-data-api"></a>
+
+## A public API chosen for its licence
+
+One GET per unit of work with Invoke web service, retried when the network stumbles, its failure returned as a flag. The source is open data that allows commercial use and asks for no key, and an empty answer is treated as an error instead of a result.
+
+- [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.

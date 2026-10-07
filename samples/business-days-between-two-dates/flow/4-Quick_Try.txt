@@ -1,0 +1,132 @@
+# subflow: Quick_Try (global)
+# Business days between two dates - the whole method in one block: nothing to create, no file.
+# The public holidays of the country come from a public API (OpenHolidays API, open data), then one Run PowerShell script
+# action counts: the calendar days, minus the days off of the week, minus the holidays that fall on a working day.
+# The reusable version does the same in two local functions, Get_Public_Holidays and Count_Business_Days, and adds
+# the days of your company from a file and the days of a region.
+# Regions: cyan = the values to change, red = the guards, green = the reading, purple = the processing, gold = the output.
+@@regionColor: '#57FFE1'
+**REGION 1. Variables: the period (both dates are counted), the days off of the week, the country
+# Dates as yyyy-MM-dd; day names in English; an ISO country code in capitals (FR, DE, BE, ES, IT ...)
+SET txt_StartDate TO $'''2026-01-01'''
+SET txt_EndDate TO $'''2026-12-31'''
+SET txt_WeekendDays TO $'''Saturday,Sunday'''
+SET txt_CountryCode TO $'''FR'''
+**ENDREGION
+@@regionColor: '#F4B6B6'
+**REGION 2. Guard: the years of the period, read only from two yyyy-MM-dd dates
+Text.ParseText.RegexParse Text: txt_StartDate TextToFind: $'''^\\d{4}(?=-\\d{2}-\\d{2}$)''' StartingPosition: 0 IgnoreCase: False Matches=> lst_FromYear
+Text.ParseText.RegexParse Text: txt_EndDate TextToFind: $'''^\\d{4}(?=-\\d{2}-\\d{2}$)''' StartingPosition: 0 IgnoreCase: False Matches=> lst_ToYear
+IF lst_FromYear.Count = 0 OR lst_ToYear.Count = 0 THEN
+    Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''Dates must be written yyyy-MM-dd: %txt_StartDate% %txt_EndDate%''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+    EXIT Code: 1
+END
+Text.ToNumber Text: lst_FromYear[0] Number=> num_FromYear
+Text.ToNumber Text: lst_ToYear[0] Number=> num_ToYear
+# A period given backwards: its two years change places
+IF num_FromYear > num_ToYear THEN
+    SET num_Swap TO num_FromYear
+    SET num_FromYear TO num_ToYear
+    SET num_ToYear TO num_Swap
+END
+**ENDREGION
+@@regionColor: '#C6E0B4'
+**REGION 3. Public holidays: one call per year, the nationwide full days read by a regular expression
+Variables.CreateNewList List=> lst_Holidays
+LOOP num_Year FROM num_FromYear TO num_ToYear STEP 1
+    SET bool_Answered TO True
+    Web.InvokeWebService.InvokeWebService Url: $'''https://openholidaysapi.org/PublicHolidays?countryIsoCode=%txt_CountryCode%&validFrom=%num_Year%-01-01&validTo=%num_Year%-12-31''' Method: Web.Method.Get Accept: $'''text/json''' ContentType: $'''application/json''' ConnectionTimeout: 30 FollowRedirection: True ClearCookies: False FailOnErrorStatus: True UserAgent: $'''PAD-flow/1.0 (Power Automate Desktop)''' Encoding: Web.Encoding.AutoDetect AcceptUntrustedCertificates: False TrimRequestBody: True Response=> txt_Json StatusCode=> num_HttpCode
+    ON ERROR REPEAT 3 TIMES WAIT 2 RetryType: RetryType.Exponential MinInterval: 2 MaxInterval: 60
+    ON ERROR
+        SET bool_Answered TO False
+    END
+    IF bool_Answered = False THEN
+        Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''No answer from the holidays API for %txt_CountryCode% in %num_Year%''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+        EXIT Code: 1
+    END
+    Text.ParseText.RegexParse Text: txt_Json TextToFind: $'''(?<=\"startDate\":\")\\d{4}-\\d{2}-\\d{2}(?=\"[^\\]]*\"type\":\"Public\"[^\\]]*\\][^\\]]*?\"temporalScope\":\"FullDay\"[^\\]]*?\"nationwide\":true)''' StartingPosition: 0 IgnoreCase: False Matches=> lst_Nationwide
+    # Every covered country has public holidays every year: an empty answer is an unknown country or a year outside the data
+    IF lst_Nationwide.Count = 0 THEN
+        Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''No public holiday returned for %txt_CountryCode% in %num_Year%: the country or the year is not covered by the API''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+        EXIT Code: 1
+    END
+    Variables.MergeLists FirstList: lst_Holidays SecondList: lst_Nationwide OutputList=> lst_Holidays
+END
+**ENDREGION
+@@regionColor: '#D9C3E9'
+**REGION 4. Count: the inputs travel in one text, one script action counts
+Text.JoinText.JoinWithCustomDelimiter List: lst_Holidays CustomDelimiter: $''',''' Result=> txt_Holidays
+SET txt_Values TO $'''%txt_StartDate%|%txt_EndDate%|%txt_WeekendDays%|%txt_Holidays%'''
+# An apostrophe would close the text inside the script: it is doubled
+Text.Replace.ReplaceText Text: txt_Values TextToFind: $'''\'''' IgnoreCase: False ReplaceWith: $'''\'\'''' ActivateEscapeSequences: False ComparisonType: Text.TextComparisonType.Ordinal Result=> txt_Values
+Scripting.RunPowershellScript.RunScript Script: $'''# Business days between two dates: one text in, one line out.
+# In : start|end|days off|holidays (dates as yyyy-MM-dd, holidays separated by commas).
+# Out: OK|business days|calendar days|weekend days|holidays|   or   ERROR|0|0|0|0|message
+# Dates are read with the invariant culture and compared as real dates: nothing depends on the regional settings.
+# ASCII only on purpose: the same text lives inside a flow and inside a PowerShell action.
+$ErrorActionPreference = \'Stop\'
+$inv = [System.Globalization.CultureInfo]::InvariantCulture
+$none = [System.Globalization.DateTimeStyles]::None
+$answer = \'ERROR|0|0|0|0|\'
+try {
+    $values = \'%txt_Values%\'.Split(\'|\')
+    if ($values.Count -ne 4) { throw \'A value holds the character | : it separates the values given to the script\' }
+    $day = [datetime]::MinValue
+    if (-not [datetime]::TryParseExact($values[0], \'yyyy-MM-dd\', $inv, $none, [ref]$day)) { throw (\'Start date is not a yyyy-MM-dd date: \' + $values[0]) }
+    $from = $day
+    if (-not [datetime]::TryParseExact($values[1], \'yyyy-MM-dd\', $inv, $none, [ref]$day)) { throw (\'End date is not a yyyy-MM-dd date: \' + $values[1]) }
+    $to = $day
+    # The days off: every word must be one of the seven English day names, once
+    $names = \'Monday\', \'Tuesday\', \'Wednesday\', \'Thursday\', \'Friday\', \'Saturday\', \'Sunday\'
+    $off = @{}
+    foreach ($word in [regex]::Matches($values[2], \'[A-Za-z]+\')) {
+        $name = $names | Where-Object { $_ -eq $word.Value }
+        if (-not $name -or $off.ContainsKey($name)) { throw (\'Weekend days must be English day names such as Saturday,Sunday: \' + $values[2]) }
+        $off[$name] = $true
+    }
+    # A period given backwards is counted forwards; the sign is turned at the end
+    $sign = 1
+    if ($from -gt $to) { $day = $from; $from = $to; $to = $day; $sign = -1 }
+    # Whole weeks are multiplied; only the days left, six at most, are visited
+    $calendar = ($to - $from).Days + 1
+    $weeks = [int][Math]::Floor($calendar / 7)
+    $work = $weeks * (7 - $off.Count)
+    for ($i = 0; $i -lt ($calendar - 7 * $weeks); $i++) {
+        if (-not $off.ContainsKey($from.AddDays($i).DayOfWeek.ToString())) { $work++ }
+    }
+    # Holidays: counted once, inside the period, and only when they fall on a working day
+    $seen = @{}
+    $holidays = 0
+    foreach ($item in $values[3].Split(\',\')) {
+        $text = $item.Trim()
+        if ($text -eq \'\') { continue }
+        if (-not [datetime]::TryParseExact($text, \'yyyy-MM-dd\', $inv, $none, [ref]$day)) { throw (\'A holiday is not a yyyy-MM-dd date: \' + $text) }
+        if ($day -ge $from -and $day -le $to -and -not $seen.ContainsKey($text)) {
+            $seen[$text] = $true
+            if (-not $off.ContainsKey($day.DayOfWeek.ToString())) { $holidays++ }
+        }
+    }
+    $answer = \'OK|\' + (($work - $holidays) * $sign) + \'|\' + $calendar + \'|\' + ($calendar - $work) + \'|\' + $holidays + \'|\'
+} catch { $answer = \'ERROR|0|0|0|0|\' + $_.Exception.Message }
+[Console]::Out.Write($answer)''' ScriptOutput=> txt_ScriptOutput ScriptError=> txt_ScriptError
+**ENDREGION
+@@regionColor: '#F4B6B6'
+**REGION 5. Guard: the action never fails by itself, the script answers OK or ERROR with a message
+IF txt_ScriptError <> $'''''' THEN
+    Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''Count failed: %txt_ScriptError%''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+    EXIT Code: 1
+END
+Text.SplitText.SplitWithDelimiter Text: txt_ScriptOutput CustomDelimiter: $'''|''' IsRegEx: False Result=> lst_Answer
+IF lst_Answer.Count < 6 THEN
+    Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''No answer from the script: %txt_ScriptOutput%''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+    EXIT Code: 1
+END
+IF lst_Answer[0] <> $'''OK''' THEN
+    Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''Count failed: %lst_Answer[5]%''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+    EXIT Code: 1
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+**REGION 6. Output: the count and how it was reached
+Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''From %txt_StartDate% to %txt_EndDate% in %txt_CountryCode%: %lst_Answer[1]% business days. That is %lst_Answer[2]% calendar days, minus %lst_Answer[3]% weekend days, minus %lst_Answer[4]% public holidays that fall on a working day (%lst_Holidays.Count% read from the API).''' Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+**ENDREGION

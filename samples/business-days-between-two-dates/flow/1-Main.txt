@@ -1,0 +1,61 @@
+# subflow: Main (global)
+# Business days between two dates - the complete example: the holidays come from two sources, then one function counts.
+# The public holidays of a country come from a public API (Get_Public_Holidays: France here, another ISO code for another country).
+# The days your company adds come from a CSV file. Either source can be left empty: a file alone, the API alone, or both.
+# Count_Business_Days then counts the period: dates, days off and holidays in; the count and its details out.
+# The two short answers (a loop over every day, then whole weeks) are the global subflow Quick_Try, autonomous.
+# Regions: cyan = the values to change, green = the reading, red = the guards, purple = the processing, gold = the output.
+@@regionColor: '#57FFE1'
+**REGION 1. Variables: the period (both dates are counted), the days off of the week, the two sources of holidays
+# Dates as yyyy-MM-dd; day names in English
+SET txt_StartDate TO $'''2026-01-01'''
+SET txt_EndDate TO $'''2026-12-31'''
+SET txt_WeekendDays TO $'''Saturday,Sunday'''
+# Public holidays from the API: an ISO country code (FR, DE, BE, ES ...; empty = no API) and, if needed, a subdivision (FR-GE-MO, DE-BY ...; empty = none)
+SET txt_CountryCode TO $'''FR'''
+SET txt_SubdivisionCode TO $''''''
+# Company days from a file: one day per line in a column named Date (empty = no file)
+SET txt_CompanyDaysFile TO $'''C:\\Work\\Calendar\\Company_Days_2026.csv'''
+**ENDREGION
+@@regionColor: '#C6E0B4'
+**REGION 2. Source 1, the file: the column Date becomes a list; a missing file is said, never ignored
+Variables.CreateNewList List=> lst_CompanyDays
+IF txt_CompanyDaysFile <> $'''''' THEN
+    IF (File.IfFile.DoesNotExist File: txt_CompanyDaysFile) THEN
+        Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''Company days file not found: %txt_CompanyDaysFile%''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+        EXIT Code: 1
+    END
+    File.ReadFromCSVFile.ReadCSV CSVFile: txt_CompanyDaysFile Encoding: File.CSVEncoding.UTF8 TrimFields: True FirstLineContainsColumnNames: True ColumnsSeparator: File.CSVColumnsSeparator.Comma CSVTable=> tbl_CompanyDays
+    Variables.RetrieveDataTableColumnIntoList DataTable: tbl_CompanyDays ColumnNameOrIndex: $'''Date''' ColumnAsList=> lst_CompanyDays
+END
+**ENDREGION
+@@regionColor: '#C6E0B4'
+**REGION 3. Source 2, the API: the public holidays of the country for the years of the period
+Variables.CreateNewList List=> lst_PublicHolidays
+IF txt_CountryCode <> $'''''' THEN
+    CALL Get_Public_Holidays in_loc_txt_CountryCode: txt_CountryCode in_loc_txt_SubdivisionCode: txt_SubdivisionCode in_loc_txt_StartDate: txt_StartDate in_loc_txt_EndDate: txt_EndDate out_loc_bool_Ok=> bool_HolidaysOk out_loc_lst_Holidays=> lst_PublicHolidays out_loc_txt_Error=> txt_Error
+    # A count without its public holidays would be wrong without a sign: the flow stops here with the reason
+    IF bool_HolidaysOk = False THEN
+        Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''Public holidays not read: %txt_Error%''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+        EXIT Code: 1
+    END
+END
+**ENDREGION
+@@regionColor: '#D9C3E9'
+**REGION 4. Count: both lists in one, a day present in both is counted once
+Variables.MergeLists FirstList: lst_PublicHolidays SecondList: lst_CompanyDays OutputList=> lst_Holidays
+CALL Count_Business_Days in_loc_txt_StartDate: txt_StartDate in_loc_txt_EndDate: txt_EndDate in_loc_txt_WeekendDays: txt_WeekendDays in_loc_lst_Holidays: lst_Holidays out_loc_bool_Ok=> bool_Ok out_loc_num_BusinessDays=> num_BusinessDays out_loc_num_CalendarDays=> num_CalendarDays out_loc_num_WeekendDays=> num_WeekendDays out_loc_num_Holidays=> num_Holidays out_loc_txt_Error=> txt_Error
+**ENDREGION
+@@regionColor: '#F4B6B6'
+**REGION 5. Guard: the function never throws, it returns a flag and a message
+IF bool_Ok = False THEN
+    Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: $'''Count failed: %txt_Error%''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+    EXIT Code: 1
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+**REGION 6. Output: the count, how it was reached and where the holidays came from
+SET txt_Message TO $'''From %txt_StartDate% to %txt_EndDate%: %num_BusinessDays% business days. That is %num_CalendarDays% calendar days, minus %num_WeekendDays% weekend days, minus %num_Holidays% holidays that fall on a working day.'''
+Text.AppendLine Text: txt_Message LineToAppend: $'''Holidays read: %lst_PublicHolidays.Count% public (API, country %txt_CountryCode%) and %lst_CompanyDays.Count% company days (file).''' Result=> txt_Message
+Display.ShowMessageDialog.ShowMessage Title: $'''Business days''' Message: txt_Message Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True
+**ENDREGION

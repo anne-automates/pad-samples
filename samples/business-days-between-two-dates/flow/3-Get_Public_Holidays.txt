@@ -1,0 +1,68 @@
+# local subflow: Get_Public_Holidays
+# inputs: in_loc_txt_CountryCode, in_loc_txt_SubdivisionCode, in_loc_txt_StartDate, in_loc_txt_EndDate
+# outputs: out_loc_bool_Ok, out_loc_lst_Holidays, out_loc_txt_Error
+# Returns the public holidays of a country for every year a period touches, as a list of yyyy-MM-dd texts ready for Count_Business_Days.
+# Source: OpenHolidays API (openholidaysapi.org), open data under the ODbL licence, free of charge, no key: 36 countries, years from 2020.
+# Another country is another ISO code (FR, DE, BE, ES, IT ...). A subdivision code adds the days of a region (FR-GE-MO for Moselle, DE-BY for Bavaria).
+# Never stops the flow: no answer, an unknown country or a year the API does not cover come back as out_loc_bool_Ok = False with a message.
+@@regionColor: '#57FFE1'
+**REGION 1. Outputs initialised: every path leaves them defined
+SET out_loc_bool_Ok TO False
+Variables.CreateNewList List=> out_loc_lst_Holidays
+SET out_loc_txt_Error TO $''''''
+**ENDREGION
+@@regionColor: '#F4B6B6'
+**REGION 2. Guards: a two-letter country in capitals, a plain subdivision code, two yyyy-MM-dd dates
+Text.ParseText.RegexParse Text: in_loc_txt_CountryCode TextToFind: $'''^[A-Z]{2}$''' StartingPosition: 0 IgnoreCase: False Matches=> lst_Country
+Text.ParseText.RegexParse Text: in_loc_txt_SubdivisionCode TextToFind: $'''[^A-Za-z0-9-]''' StartingPosition: 0 IgnoreCase: False Matches=> lst_BadCharacters
+IF lst_Country.Count = 0 OR lst_BadCharacters.Count > 0 THEN
+    SET out_loc_txt_Error TO $'''Country must be a two-letter ISO code in capitals such as FR, and the subdivision a code such as FR-GE-MO: %in_loc_txt_CountryCode% %in_loc_txt_SubdivisionCode%'''
+    EXIT FUNCTION
+END
+# The year of each date, read only when the whole text is a yyyy-MM-dd date
+Text.ParseText.RegexParse Text: in_loc_txt_StartDate TextToFind: $'''^\\d{4}(?=-\\d{2}-\\d{2}$)''' StartingPosition: 0 IgnoreCase: False Matches=> lst_FromYear
+Text.ParseText.RegexParse Text: in_loc_txt_EndDate TextToFind: $'''^\\d{4}(?=-\\d{2}-\\d{2}$)''' StartingPosition: 0 IgnoreCase: False Matches=> lst_ToYear
+IF lst_FromYear.Count = 0 OR lst_ToYear.Count = 0 THEN
+    SET out_loc_txt_Error TO $'''Dates must be written yyyy-MM-dd: %in_loc_txt_StartDate% %in_loc_txt_EndDate%'''
+    EXIT FUNCTION
+END
+Text.ToNumber Text: lst_FromYear[0] Number=> num_FromYear
+Text.ToNumber Text: lst_ToYear[0] Number=> num_ToYear
+# A period given backwards: its two years change places
+IF num_FromYear > num_ToYear THEN
+    SET num_Swap TO num_FromYear
+    SET num_FromYear TO num_ToYear
+    SET num_ToYear TO num_Swap
+END
+**ENDREGION
+@@regionColor: '#C6E0B4'
+**REGION 3. One call per year: the nationwide full days, then the days of the subdivision
+LOOP num_Year FROM num_FromYear TO num_ToYear STEP 1
+    Web.InvokeWebService.InvokeWebService Url: $'''https://openholidaysapi.org/PublicHolidays?countryIsoCode=%in_loc_txt_CountryCode%&validFrom=%num_Year%-01-01&validTo=%num_Year%-12-31''' Method: Web.Method.Get Accept: $'''text/json''' ContentType: $'''application/json''' ConnectionTimeout: 30 FollowRedirection: True ClearCookies: False FailOnErrorStatus: True UserAgent: $'''PAD-flow/1.0 (Power Automate Desktop)''' Encoding: Web.Encoding.AutoDetect AcceptUntrustedCertificates: False TrimRequestBody: True Response=> txt_Json StatusCode=> num_HttpCode
+    ON ERROR REPEAT 3 TIMES WAIT 2 RetryType: RetryType.Exponential MinInterval: 2 MaxInterval: 60
+    ON ERROR
+        SET out_loc_txt_Error TO $'''No answer from the holidays API for %in_loc_txt_CountryCode% in %num_Year%'''
+    END
+    IF out_loc_txt_Error <> $'''''' THEN
+        Variables.ClearList List: out_loc_lst_Holidays
+        EXIT FUNCTION
+    END
+    # Each date is read by a regular expression that looks ahead in its own object: a public, full, nationwide day
+    Text.ParseText.RegexParse Text: txt_Json TextToFind: $'''(?<=\"startDate\":\")\\d{4}-\\d{2}-\\d{2}(?=\"[^\\]]*\"type\":\"Public\"[^\\]]*\\][^\\]]*?\"temporalScope\":\"FullDay\"[^\\]]*?\"nationwide\":true)''' StartingPosition: 0 IgnoreCase: False Matches=> lst_Nationwide
+    # Every covered country has public holidays every year: an empty answer is an unknown country or a year outside the data
+    IF lst_Nationwide.Count = 0 THEN
+        SET out_loc_txt_Error TO $'''No public holiday returned for %in_loc_txt_CountryCode% in %num_Year%: the country or the year is not covered by the API'''
+        Variables.ClearList List: out_loc_lst_Holidays
+        EXIT FUNCTION
+    END
+    Variables.MergeLists FirstList: out_loc_lst_Holidays SecondList: lst_Nationwide OutputList=> out_loc_lst_Holidays
+    IF in_loc_txt_SubdivisionCode <> $'''''' THEN
+        Text.ParseText.RegexParse Text: txt_Json TextToFind: $'''(?<=\"startDate\":\")\\d{4}-\\d{2}-\\d{2}(?=\"[^\\]]*\"type\":\"Public\"[^\\]]*\\][^\\]]*?\"temporalScope\":\"FullDay\"[^\\]]*\"code\":\"%in_loc_txt_SubdivisionCode%\")''' StartingPosition: 0 IgnoreCase: True Matches=> lst_Regional
+        Variables.MergeLists FirstList: out_loc_lst_Holidays SecondList: lst_Regional OutputList=> out_loc_lst_Holidays
+    END
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+**REGION 4. Outputs: the list holds every public holiday of the years asked
+SET out_loc_bool_Ok TO True
+**ENDREGION

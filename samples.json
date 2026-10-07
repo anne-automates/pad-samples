@@ -1,6 +1,59 @@
 {
   "samples": [
     {
+      "id": "business-days-between-two-dates",
+      "title": "Business days between two dates",
+      "summary": "Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.",
+      "category": "Dates & time",
+      "kind": "component",
+      "level": "intermediate",
+      "version": "1.0.0",
+      "released": "2026-10-07",
+      "techniques": [
+        "local-function",
+        "errors-as-outputs",
+        "powershell-script",
+        "open-data-api",
+        "json-by-regex",
+        "test-cases-file"
+      ],
+      "requires": [],
+      "quick_try_minutes": 2,
+      "setup_minutes": 15,
+      "subflows": 2,
+      "inputs": 8,
+      "outputs": 9,
+      "ui_elements": 0,
+      "tested": [
+        {
+          "pad": "2.72.183",
+          "date": "2026-10-07",
+          "path": "Full flow (file and API for France)",
+          "result": "pass"
+        },
+        {
+          "pad": "2.72.183",
+          "date": "2026-10-07",
+          "path": "Quick try",
+          "result": "pass"
+        },
+        {
+          "pad": "2.72.183",
+          "date": "2026-10-07",
+          "path": "File only, API only, Germany, Moselle",
+          "result": "pass"
+        },
+        {
+          "pad": "2.72.183",
+          "date": "2026-10-07",
+          "path": "Tests (59 cases)",
+          "result": "pass"
+        }
+      ],
+      "page": "samples/business-days-between-two-dates/README.md",
+      "image": "samples/business-days-between-two-dates/assets/result.png"
+    },
+    {
       "id": "excel-range-to-html-table",
       "title": "Excel range to an email-ready HTML table",
       "summary": "Turn any Excel range into an HTML table that keeps its look (fills, fonts, borders, number formats), ready for an Outlook email.",

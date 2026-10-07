@@ -57,3 +57,13 @@ trained-classifier:
   label: Trained classifier
   title: A small classifier trained on your own sorted data
   summary: An embedding model turns each text into a vector; a logistic regression learns your categories from a few dozen sorted examples in seconds on the CPU, and gives a confidence that sends doubtful cases to a person.
+
+test-cases-file:
+  label: Test cases file
+  title: Test cases replayed from a file
+  summary: A subflow replays the lines of a CSV file through the function and compares each result with a value computed elsewhere (here by Excel). A new test is a new line in the file.
+
+open-data-api:
+  label: Open data API
+  title: A public API chosen for its licence
+  summary: One GET per unit of work with Invoke web service, retried when the network stumbles, its failure returned as a flag. The source is open data that allows commercial use and asks for no key, and an empty answer is treated as an error instead of a result.

@@ -1,0 +1,60 @@
+# subflow: Tests (global)
+# Business days between two dates - replays the cases of Business_Days_Cases.csv through the function Count_Business_Days.
+# Each line gives two dates, the days off of the week, the holidays to use (no, yes = the holidays file, bad = a list
+# that holds a wrong date) and the count Excel returns with NETWORKDAYS.INTL, or ERROR when the function must refuse the input.
+# One line per case goes to a report next to the cases file; the last line gives the total.
+# Regions: cyan = the values to change, green = the reading, purple = the processing, gold = the output.
+@@regionColor: '#57FFE1'
+**REGION 1. Variables: the folder of the sample files
+SET txt_TestFolder TO $'''C:\\Work\\Calendar'''
+SET txt_CasesFile TO $'''%txt_TestFolder%\\Business_Days_Cases.csv'''
+SET txt_HolidaysFile TO $'''%txt_TestFolder%\\Holidays_2026.csv'''
+**ENDREGION
+@@regionColor: '#C6E0B4'
+**REGION 2. Read the cases and the holidays; name the report after the time of the run
+File.ReadFromCSVFile.ReadCSV CSVFile: txt_CasesFile Encoding: File.CSVEncoding.UTF8 TrimFields: True FirstLineContainsColumnNames: True ColumnsSeparator: File.CSVColumnsSeparator.Comma CSVTable=> tbl_Cases
+File.ReadFromCSVFile.ReadCSV CSVFile: txt_HolidaysFile Encoding: File.CSVEncoding.UTF8 TrimFields: True FirstLineContainsColumnNames: True ColumnsSeparator: File.CSVColumnsSeparator.Comma CSVTable=> tbl_Holidays
+Variables.RetrieveDataTableColumnIntoList DataTable: tbl_Holidays ColumnNameOrIndex: $'''Date''' ColumnAsList=> lst_Holidays
+Variables.CreateNewList List=> lst_NoHoliday
+Variables.CreateNewList List=> lst_BadHoliday
+Variables.AddItemToList Item: $'''2026-12-25''' List: lst_BadHoliday
+Variables.AddItemToList Item: $'''25/12/2026''' List: lst_BadHoliday
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> date_Now
+Text.ConvertDateTimeToText.FromCustomDateTime DateTime: date_Now CustomFormat: $'''yyyyMMdd-HHmmss''' Result=> txt_Stamp
+SET txt_ReportFile TO $'''%txt_TestFolder%\\tests-Business_Days-%txt_Stamp%.txt'''
+SET num_Pass TO 0
+SET num_Fail TO 0
+**ENDREGION
+@@regionColor: '#D9C3E9'
+**REGION 3. One call per case, compared with the expected count
+LOOP FOREACH row_Case IN tbl_Cases
+    IF row_Case['Holidays'] = $'''yes''' THEN
+        SET lst_CaseHolidays TO lst_Holidays
+    ELSE IF row_Case['Holidays'] = $'''bad''' THEN
+        SET lst_CaseHolidays TO lst_BadHoliday
+    ELSE
+        SET lst_CaseHolidays TO lst_NoHoliday
+    END
+    CALL Count_Business_Days in_loc_txt_StartDate: row_Case['Start'] in_loc_txt_EndDate: row_Case['End'] in_loc_txt_WeekendDays: row_Case['WeekendDays'] in_loc_lst_Holidays: lst_CaseHolidays out_loc_bool_Ok=> bool_Ok out_loc_num_BusinessDays=> num_BusinessDays out_loc_num_CalendarDays=> num_CalendarDays out_loc_num_WeekendDays=> num_WeekendDays out_loc_num_Holidays=> num_Holidays out_loc_txt_Error=> txt_Error
+    # A refused input is expected as ERROR; a count is compared as text with the count of the file
+    IF bool_Ok = True THEN
+        SET txt_Got TO $'''%num_BusinessDays%'''
+    ELSE
+        SET txt_Got TO $'''ERROR'''
+    END
+    IF txt_Got = row_Case['Expected'] THEN
+        SET txt_Line TO $'''PASS - %row_Case['Case']%: %row_Case['Start']% to %row_Case['End']% gives %txt_Got% %txt_Error%'''
+        SET num_Pass TO num_Pass + 1
+    ELSE
+        SET txt_Line TO $'''FAIL - %row_Case['Case']%: %row_Case['Start']% to %row_Case['End']% gives %txt_Got%, expected %row_Case['Expected']% %txt_Error%'''
+        SET num_Fail TO num_Fail + 1
+    END
+    File.WriteText File: txt_ReportFile TextToWrite: txt_Line AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+**REGION 4. Output: the total at the end of the report and on screen for a few seconds
+SET txt_Total TO $'''TOTAL : %num_Pass% PASS, %num_Fail% FAIL'''
+File.WriteText File: txt_ReportFile TextToWrite: txt_Total AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+Display.ShowMessageDialog.ShowMessageWithTimeout Title: $'''Business days''' Message: $'''%tbl_Cases.RowsCount% cases replayed: %num_Pass% pass, %num_Fail% fail. Report: %txt_ReportFile%''' Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True Timeout: 10
+**ENDREGION

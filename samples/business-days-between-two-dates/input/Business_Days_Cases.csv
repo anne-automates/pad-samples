@@ -1,0 +1,60 @@
+Case,Start,End,WeekendDays,Holidays,Expected
+One working week,2026-03-02,2026-03-06,"Saturday,Sunday",no,5
+Same day on a Monday,2026-03-02,2026-03-02,"Saturday,Sunday",no,1
+Same day on a Saturday,2026-03-07,2026-03-07,"Saturday,Sunday",no,0
+A weekend only,2026-03-07,2026-03-08,"Saturday,Sunday",no,0
+Friday to Monday,2026-03-06,2026-03-09,"Saturday,Sunday",no,2
+Seven days,2026-03-04,2026-03-10,"Saturday,Sunday",no,5
+Eight days from a Sunday,2026-03-01,2026-03-08,"Saturday,Sunday",no,5
+February 2026 is four whole weeks,2026-02-01,2026-02-28,"Saturday,Sunday",no,20
+First quarter of 2026,2026-01-01,2026-03-31,"Saturday,Sunday",no,64
+Year 2026 without holidays,2026-01-01,2026-12-31,"Saturday,Sunday",no,261
+Year 2026 with the holidays file,2026-01-01,2026-12-31,"Saturday,Sunday",yes,254
+Leap year 2028,2028-01-01,2028-12-31,"Saturday,Sunday",no,260
+Ten years,2020-01-01,2029-12-31,"Saturday,Sunday",no,2609
+Thirty years,2000-01-01,2029-12-31,"Saturday,Sunday",no,7826
+Backwards over one week,2026-03-06,2026-03-02,"Saturday,Sunday",no,-5
+Backwards over 2026 with holidays,2026-12-31,2026-01-01,"Saturday,Sunday",yes,-254
+Friday and Saturday off,2026-03-01,2026-03-31,"Friday,Saturday",no,23
+Sunday off only,2026-03-01,2026-03-31,"Sunday",no,26
+No day off in the week,2026-03-01,2026-03-31,"",no,31
+Day names in lower case with spaces,2026-03-01,2026-03-31,"saturday, sunday",no,22
+Christmas week with holidays,2026-12-21,2026-12-31,"Saturday,Sunday",yes,7
+A holiday on a Saturday changes nothing,2026-08-10,2026-08-21,"Saturday,Sunday",yes,10
+Across the new year with holidays,2026-12-28,2027-01-08,"Saturday,Sunday",yes,9
+Good Friday when Friday is already off,2026-04-01,2026-04-10,"Friday,Saturday",yes,6
+From a holiday to a holiday,2026-04-03,2026-04-06,"Saturday,Sunday",yes,0
+A holiday listed twice is counted once,2026-12-25,2026-12-25,"Saturday,Sunday",yes,0
+Thirty years up to 2055,2026-01-01,2055-12-31,"Saturday,Sunday",no,7827
+Thirty years up to 2055 with holidays,2026-01-01,2055-12-31,"Saturday,Sunday",yes,7819
+Backwards from 2055,2055-12-31,2026-01-01,"Saturday,Sunday",no,-7827
+Across the new year 2050,2049-12-27,2050-01-07,"Saturday,Sunday",no,10
+Across the new year 1950,1949-12-26,1950-01-06,"Saturday,Sunday",no,10
+Random pair 1,2021-01-29,2021-11-06,"Thursday,Friday",no,201
+Random pair 2,2031-12-01,2035-08-19,"Saturday,Sunday",yes,970
+Random pair 3,2027-09-11,2031-02-15,"Friday,Saturday",no,895
+Random pair 4,2026-03-19,2026-12-30,"Saturday,Sunday",yes,199
+Random pair 5,2025-08-02,2025-08-14,"Saturday,Sunday",no,9
+Random pair 6,2025-08-17,2025-08-10,"Friday,Saturday",yes,-6
+Random pair 7,2029-04-16,2028-10-19,"Thursday,Friday",no,-128
+Random pair 8,2026-04-14,2026-11-19,"Friday,Saturday",yes,157
+Random pair 9,2029-08-19,2029-02-22,"Saturday,Sunday",no,-127
+Random pair 10,2028-08-12,2028-09-21,"Saturday,Sunday",yes,29
+Random pair 11,2019-01-02,2022-02-03,"Saturday,Sunday",no,807
+Random pair 12,2026-02-09,2026-04-17,"Saturday,Sunday",yes,48
+Random pair 13,2023-03-31,2026-09-08,"Friday,Saturday",no,898
+Random pair 14,2022-09-30,2024-09-23,"Saturday,Sunday",yes,517
+Random pair 15,2031-08-17,2033-12-27,"Saturday,Sunday",no,617
+Random pair 16,2026-11-12,2027-02-03,"Thursday,Friday",yes,59
+Random pair 17,2019-05-26,2019-12-17,"Thursday,Friday",no,148
+Random pair 18,2022-05-18,2025-12-16,"Saturday,Sunday",yes,935
+Random pair 19,2028-07-17,2029-05-24,"Saturday,Sunday",no,224
+Random pair 20,2026-12-22,2026-10-08,"Saturday,Sunday",yes,-54
+Start is not a date,not a date,2026-03-06,"Saturday,Sunday",no,ERROR
+End is 30 February,2026-02-01,2026-02-30,"Saturday,Sunday",no,ERROR
+Start carries a time,2026-03-02 17:30,2026-03-06,"Saturday,Sunday",no,ERROR
+Month and day without zeros,2026-3-2,2026-03-06,"Saturday,Sunday",no,ERROR
+Start is empty,,2026-03-06,"Saturday,Sunday",no,ERROR
+A day name is misspelt,2026-03-02,2026-03-06,"Saterday,Sunday",no,ERROR
+Day names in another language,2026-03-02,2026-03-06,"Samedi,Dimanche",no,ERROR
+A holiday is not a date,2026-12-01,2026-12-31,"Saturday,Sunday",bad,ERROR

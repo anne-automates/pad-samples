@@ -1,0 +1,60 @@
+PASS - One working week: 2026-03-02 to 2026-03-06 gives 5 
+PASS - Same day on a Monday: 2026-03-02 to 2026-03-02 gives 1 
+PASS - Same day on a Saturday: 2026-03-07 to 2026-03-07 gives 0 
+PASS - A weekend only: 2026-03-07 to 2026-03-08 gives 0 
+PASS - Friday to Monday: 2026-03-06 to 2026-03-09 gives 2 
+PASS - Seven days: 2026-03-04 to 2026-03-10 gives 5 
+PASS - Eight days from a Sunday: 2026-03-01 to 2026-03-08 gives 5 
+PASS - February 2026 is four whole weeks: 2026-02-01 to 2026-02-28 gives 20 
+PASS - First quarter of 2026: 2026-01-01 to 2026-03-31 gives 64 
+PASS - Year 2026 without holidays: 2026-01-01 to 2026-12-31 gives 261 
+PASS - Year 2026 with the holidays file: 2026-01-01 to 2026-12-31 gives 254 
+PASS - Leap year 2028: 2028-01-01 to 2028-12-31 gives 260 
+PASS - Ten years: 2020-01-01 to 2029-12-31 gives 2609 
+PASS - Thirty years: 2000-01-01 to 2029-12-31 gives 7826 
+PASS - Backwards over one week: 2026-03-06 to 2026-03-02 gives -5 
+PASS - Backwards over 2026 with holidays: 2026-12-31 to 2026-01-01 gives -254 
+PASS - Friday and Saturday off: 2026-03-01 to 2026-03-31 gives 23 
+PASS - Sunday off only: 2026-03-01 to 2026-03-31 gives 26 
+PASS - No day off in the week: 2026-03-01 to 2026-03-31 gives 31 
+PASS - Day names in lower case with spaces: 2026-03-01 to 2026-03-31 gives 22 
+PASS - Christmas week with holidays: 2026-12-21 to 2026-12-31 gives 7 
+PASS - A holiday on a Saturday changes nothing: 2026-08-10 to 2026-08-21 gives 10 
+PASS - Across the new year with holidays: 2026-12-28 to 2027-01-08 gives 9 
+PASS - Good Friday when Friday is already off: 2026-04-01 to 2026-04-10 gives 6 
+PASS - From a holiday to a holiday: 2026-04-03 to 2026-04-06 gives 0 
+PASS - A holiday listed twice is counted once: 2026-12-25 to 2026-12-25 gives 0 
+PASS - Thirty years up to 2055: 2026-01-01 to 2055-12-31 gives 7827 
+PASS - Thirty years up to 2055 with holidays: 2026-01-01 to 2055-12-31 gives 7819 
+PASS - Backwards from 2055: 2055-12-31 to 2026-01-01 gives -7827 
+PASS - Across the new year 2050: 2049-12-27 to 2050-01-07 gives 10 
+PASS - Across the new year 1950: 1949-12-26 to 1950-01-06 gives 10 
+PASS - Random pair 1: 2021-01-29 to 2021-11-06 gives 201 
+PASS - Random pair 2: 2031-12-01 to 2035-08-19 gives 970 
+PASS - Random pair 3: 2027-09-11 to 2031-02-15 gives 895 
+PASS - Random pair 4: 2026-03-19 to 2026-12-30 gives 199 
+PASS - Random pair 5: 2025-08-02 to 2025-08-14 gives 9 
+PASS - Random pair 6: 2025-08-17 to 2025-08-10 gives -6 
+PASS - Random pair 7: 2029-04-16 to 2028-10-19 gives -128 
+PASS - Random pair 8: 2026-04-14 to 2026-11-19 gives 157 
+PASS - Random pair 9: 2029-08-19 to 2029-02-22 gives -127 
+PASS - Random pair 10: 2028-08-12 to 2028-09-21 gives 29 
+PASS - Random pair 11: 2019-01-02 to 2022-02-03 gives 807 
+PASS - Random pair 12: 2026-02-09 to 2026-04-17 gives 48 
+PASS - Random pair 13: 2023-03-31 to 2026-09-08 gives 898 
+PASS - Random pair 14: 2022-09-30 to 2024-09-23 gives 517 
+PASS - Random pair 15: 2031-08-17 to 2033-12-27 gives 617 
+PASS - Random pair 16: 2026-11-12 to 2027-02-03 gives 59 
+PASS - Random pair 17: 2019-05-26 to 2019-12-17 gives 148 
+PASS - Random pair 18: 2022-05-18 to 2025-12-16 gives 935 
+PASS - Random pair 19: 2028-07-17 to 2029-05-24 gives 224 
+PASS - Random pair 20: 2026-12-22 to 2026-10-08 gives -54 
+PASS - Start is not a date: not a date to 2026-03-06 gives ERROR Start date is not a yyyy-MM-dd date: not a date
+PASS - End is 30 February: 2026-02-01 to 2026-02-30 gives ERROR End date is not a yyyy-MM-dd date: 2026-02-30
+PASS - Start carries a time: 2026-03-02 17:30 to 2026-03-06 gives ERROR Start date is not a yyyy-MM-dd date: 2026-03-02 17:30
+PASS - Month and day without zeros: 2026-3-2 to 2026-03-06 gives ERROR Start date is not a yyyy-MM-dd date: 2026-3-2
+PASS - Start is empty:  to 2026-03-06 gives ERROR Start date is not a yyyy-MM-dd date:
+PASS - A day name is misspelt: 2026-03-02 to 2026-03-06 gives ERROR Weekend days must be English day names such as Saturday,Sunday: Saterday,Sunday
+PASS - Day names in another language: 2026-03-02 to 2026-03-06 gives ERROR Weekend days must be English day names such as Saturday,Sunday: Samedi,Dimanche
+PASS - A holiday is not a date: 2026-12-01 to 2026-12-31 gives ERROR A holiday is not a yyyy-MM-dd date: 25/12/2026
+TOTAL : 59 PASS, 0 FAIL

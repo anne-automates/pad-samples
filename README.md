@@ -6,7 +6,7 @@
 
 Every sample starts with the quickest way to see it work, then states the problem, the design and the alternatives it beat, the contract of its reusable parts, its limits and the PAD versions it ran on.
 
-**2 samples** · 2 categories · 9 techniques · [Samples by technique](TECHNIQUES.md) · [How the samples are organised](START-HERE.md) · [Contribute](CONTRIBUTING.md) · [Submit a challenge](https://github.com/anne-automates/anne-automates.github.io/issues/new?template=submit-a-challenge.yml) · [Copilot Studio samples](https://anne-automates.github.io/copilot-studio-samples/)
+**3 samples** · 3 categories · 11 techniques · [Samples by technique](TECHNIQUES.md) · [How the samples are organised](START-HERE.md) · [Contribute](CONTRIBUTING.md) · [Submit a challenge](https://github.com/anne-automates/anne-automates.github.io/issues/new?template=submit-a-challenge.yml) · [Copilot Studio samples](https://anne-automates.github.io/copilot-studio-samples/)
 
 > [!IMPORTANT]
 > **For e-learning purposes.** The samples teach; they are not production-ready. Read the [disclaimer](START-HERE.md#disclaimer).
@@ -16,7 +16,7 @@ Every sample starts with the quickest way to see it work, then states the proble
 
 <!-- gallery:start -->
 
-**Categories:** [Excel](#excel) (1) · [Email](#email) (1)
+**Categories:** [Excel](#excel) (1) · [Email](#email) (1) · [Dates & time](#dates-time) (1)
 
 ## Excel
 
@@ -33,6 +33,14 @@ Outlook messages read, filed, drafted or sent.
 | | Sample | Techniques | Try it | Requires |
 |---|---|---|---|---|
 | <img src="samples/local-ai-email-triage/assets/cover.png" width="150"> | **[Email triage by a local AI model](samples/local-ai-email-triage/README.md)**<br>Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.<br><sub>Reusable component · Intermediate · v1.1.2</sub> | Local function, Errors as outputs, Local AI model, JSON by regex, Trained classifier | 2 min, nothing to create | Ollama with the model llama3.2:3b |
+
+## Dates & time
+
+Deadlines, working days and periods counted the way the business counts them.
+
+| | Sample | Techniques | Try it | Requires |
+|---|---|---|---|---|
+| <img src="samples/business-days-between-two-dates/assets/result.png" width="150"> | **[Business days between two dates](samples/business-days-between-two-dates/README.md)**<br>Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.<br><sub>Reusable component · Intermediate · v1.0.0</sub> | Local function, Errors as outputs, PowerShell action, Open data API, JSON by regex, Test cases file | 2 min, nothing to create | PAD only |
 
 <!-- gallery:end -->
 
