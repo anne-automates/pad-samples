@@ -7,7 +7,7 @@
       "category": "Dates & time",
       "kind": "component",
       "level": "intermediate",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "released": "2026-10-07",
       "techniques": [
         "local-function",
@@ -51,7 +51,8 @@
         }
       ],
       "page": "samples/business-days-between-two-dates/README.md",
-      "image": "samples/business-days-between-two-dates/assets/result.png"
+      "image": "samples/business-days-between-two-dates/assets/result.png",
+      "cover": "samples/business-days-between-two-dates/assets/cover.png"
     },
     {
       "id": "excel-range-to-html-table",

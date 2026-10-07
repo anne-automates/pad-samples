@@ -2,7 +2,7 @@
 # Everything the code already says (subflows, contract, UI elements, line counts, settings, regions) is NOT repeated here.
 # Quote any text that holds a comma inside { }.
 id: business-days-between-two-dates
-version: 1.0.0             # x.y.z : see CONTRIBUTING, section Versions
+version: 1.0.1             # x.y.z : see CONTRIBUTING, section Versions
 title: Business days between two dates
 summary: "Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts."
 category: "Dates & time"
@@ -93,6 +93,7 @@ limits:
   - "`Count_Business_Days` was tested on dates from 1949 to 2055, on a PC set to English (United States)."
 
 pictures:
+  cover: {file: assets/cover.png, caption: "Illustration: a calendar and the public holidays of a country go in, the number of business days comes out"}
   result: {file: assets/result.png, caption: "The message at the end of Main: France, 2026, public holidays from the API and company days from the file"}
   variables_pane: {file: assets/variables-pane.png, caption: "The Variables pane of Count_Business_Days, section Local: Input 4, Output 6"}
   canvas:

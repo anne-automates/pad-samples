@@ -6,9 +6,9 @@
 
 Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
 
-**Reusable component** · Intermediate · Requires PAD only · Tested on PAD 2.72.183 · v1.0.0
+**Reusable component** · Intermediate · Requires PAD only · Tested on PAD 2.72.183 · v1.0.1
 
-[**Step-by-step setup**](SETUP.md) · [Download the sample (zip)](https://github.com/anne-automates/pad-samples/releases/download/business-days-between-two-dates-v1.0.0/business-days-between-two-dates-v1.0.0.zip) · [Changelog](CHANGELOG.md)
+[**Step-by-step setup**](SETUP.md) · [Download the sample (zip)](https://github.com/anne-automates/pad-samples/releases/download/business-days-between-two-dates-v1.0.1/business-days-between-two-dates-v1.0.1.zip) · [Changelog](CHANGELOG.md)
 
 *For e-learning purposes only: try it in a test environment with the sample data, and review it before any real use. [Disclaimer](../../START-HERE.md#disclaimer)*
 

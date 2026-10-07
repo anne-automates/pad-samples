@@ -4,7 +4,7 @@
 
 # Set up: Business days between two dates
 
-Tested on PAD 2.72.183 · v1.0.0
+Tested on PAD 2.72.183 · v1.0.1
 
 *For e-learning purposes only: try it in a test environment with the sample data, and review it before any real use. [Disclaimer](../../START-HERE.md#disclaimer)*
 

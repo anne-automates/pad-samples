@@ -40,7 +40,7 @@ Deadlines, working days and periods counted the way the business counts them.
 
 | | Sample | Techniques | Try it | Requires |
 |---|---|---|---|---|
-| <img src="samples/business-days-between-two-dates/assets/result.png" width="150"> | **[Business days between two dates](samples/business-days-between-two-dates/README.md)**<br>Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.<br><sub>Reusable component · Intermediate · v1.0.0</sub> | Local function, Errors as outputs, PowerShell action, Open data API, JSON by regex, Test cases file | 2 min, nothing to create | PAD only |
+| <img src="samples/business-days-between-two-dates/assets/cover.png" width="150"> | **[Business days between two dates](samples/business-days-between-two-dates/README.md)**<br>Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.<br><sub>Reusable component · Intermediate · v1.0.1</sub> | Local function, Errors as outputs, PowerShell action, Open data API, JSON by regex, Test cases file | 2 min, nothing to create | PAD only |
 
 <!-- gallery:end -->
 
