@@ -20,7 +20,7 @@ Every sample starts with the quickest way to see it work, then states the proble
 
 ## Latest
 
-- 2026-10-19 · [Process framework template](samples/process-framework-template/README.md) v1.0.0
+- 2026-10-19 · [Process framework template](samples/process-framework-template/README.md) v1.0.1
 - 2026-10-07 · [Business days between two dates](samples/business-days-between-two-dates/README.md) v1.0.1
 - 2026-10-01 · [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md) v1.1.1
 - 2026-10-01 · [Email triage by a local AI model](samples/local-ai-email-triage/README.md) v1.1.2
@@ -55,7 +55,7 @@ Desktop flow templates - every process starts from a tested skeleton and changes
 
 | | Sample | Techniques | Try it | Requires |
 |---|---|---|---|---|
-| <img src="samples/process-framework-template/assets/result.png" width="150"> | **[Process framework template](samples/process-framework-template/README.md)**<br>A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.<br><sub>Desktop flow template · Intermediate · v1.0.0</sub> | Flow template, Local function, Coloured regions, Action notes, Business and system exceptions, Errors as outputs, Settings per environment, Tests subflow, Outlook draft | 90 min, 10 local subflows, 35 inputs, 35 outputs | PAD only |
+| <img src="samples/process-framework-template/assets/result.png" width="150"> | **[Process framework template](samples/process-framework-template/README.md)**<br>A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.<br><sub>Desktop flow template · Intermediate · v1.0.1</sub> | Flow template, Local function, Coloured regions, Action notes, Business and system exceptions, Errors as outputs, Settings per environment, Tests subflow, Outlook draft | 90 min, 10 local subflows, 35 inputs, 35 outputs | PAD only |
 
 <!-- gallery:end -->
 

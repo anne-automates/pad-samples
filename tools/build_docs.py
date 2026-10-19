@@ -153,10 +153,11 @@ def fig(p, width=None):
     return f'<img src="{p["file"]}" alt="{p["caption"]}"{w}><br><sub>{p["caption"]}</sub>'
 
 
-def mermaid(subs, optional):
-    """One row per subflow: its regions in their canvas colours, left to right; one arrow per CALL."""
+def mermaid(subs, optional, layout="TB"):
+    """One row per subflow: its regions in their canvas colours, left to right; one arrow per CALL.
+    layout LR puts the caller on the left and the functions it calls in one column on its right (many functions)."""
     shown = [s for s in subs if s.file not in optional]
-    out = ["```mermaid", "flowchart TB"]
+    out = ["```mermaid", f"flowchart {layout}"]
     for s in shown:
         scope = {"Local": "local function", "Main": "main", "Global": "global"}[s.scope]
         out.append(f'  subgraph {s.name}["<b>{s.name}</b> · {scope}"]')
@@ -436,7 +437,7 @@ class Sample:
         else:
             md += self.use_it_lines()
 
-        md += ["## How it works", "", mermaid(self.full, self.optional), ""]
+        md += ["## How it works", "", mermaid(self.full, self.optional, "LR" if c["kind"] == "template" else "TB"), ""]
         core = self.functions[0] if self.functions and c["kind"] != "template" else self.main
         md += [f"`{core.name}`, region by region:", ""]
         md += [f"{i}. {region_step(r)}" for i, (r, _) in enumerate(core.regions, 1)]

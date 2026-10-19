@@ -2,7 +2,7 @@
 # Everything the code already says (subflows, contract, UI elements, line counts, settings, regions) is NOT repeated here.
 # Quote any text that holds a comma inside { }.
 id: process-framework-template
-version: 1.0.0             # x.y.z : see CONTRIBUTING, section Versions
+version: 1.0.1             # x.y.z : see CONTRIBUTING, section Versions
 title: Process framework template
 summary: "A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action."
 category: Templates
