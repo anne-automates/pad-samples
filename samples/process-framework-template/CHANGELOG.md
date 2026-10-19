@@ -1,5 +1,10 @@
 # Changelog - Process framework template
 
+## 1.0.3 - 2026-10-19
+
+- *Make a process from it* opens with a flowchart of the template: the steps of `Main`, the functions they call, and the six places a process changes, numbered. The example of the invoice reminders shows, for each region, what the template holds there and what the example put in its place.
+- The flow did not change: no new run needed.
+
 ## 1.0.2 - 2026-10-19
 
 - The gallery card shows an illustration (`assets/cover.png`). The flow did not change: no new run needed.

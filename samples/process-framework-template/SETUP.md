@@ -4,7 +4,7 @@
 
 # Set up: Process framework template
 
-Tested on PAD 2.73.155 · v1.0.2
+Tested on PAD 2.73.155 · v1.0.3
 
 *For e-learning purposes only: try it in a test environment with the sample data, and review it before any real use. [Disclaimer](../../START-HERE.md#disclaimer)*
 
@@ -1750,6 +1750,8 @@ The designer opens on `Main` only: every other subflow is in the **Subflows** li
 | `Load_Config` | add the default of every business setting in region 2, so the key exists even when Config.csv does not list it. |
 | `Get_Work_Items` | replace region 3 by the real source (Excel, SQL, API, export of a business application), give region 1 the columns of that source and remove the demo part of region 2 ; keep one row per item. |
 | `Process_Item` | replace regions 2.1 (business rules) and 2.2 (application steps) by the real process, and the key column read in region 1 ; keep the rest of regions 1, 2 and 3. |
+
+<img src="assets/what-to-change.png" alt="Where a process changes the template: the coral boxes, numbered as in the example below; the grey ones stay as they are" width="600"><br><sub>Where a process changes the template: the coral boxes, numbered as in the example below; the grey ones stay as they are</sub>
 
 <img src="assets/canvas-process-item.png" alt="Process_Item: marker 1 on region 2.1 (business rules), marker 2 on region 2.2 (application steps)" width="640"><br><sub>Process_Item: marker 1 on region 2.1 (business rules), marker 2 on region 2.2 (application steps)</sub>
 

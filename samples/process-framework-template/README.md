@@ -6,9 +6,9 @@
 
 A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
 
-**Desktop flow template** · Intermediate · Requires PAD only · Tested on PAD 2.73.155 · v1.0.2
+**Desktop flow template** · Intermediate · Requires PAD only · Tested on PAD 2.73.155 · v1.0.3
 
-[**Step-by-step setup**](SETUP.md) · [Download the sample (zip)](https://github.com/anne-automates/pad-samples/releases/download/process-framework-template-v1.0.2/process-framework-template-v1.0.2.zip) · [Changelog](CHANGELOG.md)
+[**Step-by-step setup**](SETUP.md) · [Download the sample (zip)](https://github.com/anne-automates/pad-samples/releases/download/process-framework-template-v1.0.3/process-framework-template-v1.0.3.zip) · [Changelog](CHANGELOG.md)
 
 *For e-learning purposes only: try it in a test environment with the sample data, and review it before any real use. [Disclaimer](../../START-HERE.md#disclaimer)*
 
@@ -96,6 +96,8 @@ The reference was built for PAD 2.57, before desktop flow templates existed. Wha
 | `Process_Item` | replace regions 2.1 (business rules) and 2.2 (application steps) by the real process, and the key column read in region 1 ; keep the rest of regions 1, 2 and 3. |
 
 3. Run `Tests`, then `Main`. Step by step: [A process from the template](SETUP.md#2-a-process-from-the-template).
+
+<img src="assets/what-to-change.png" alt="Where a process changes the template: the coral boxes, numbered as in the example below; the grey ones stay as they are" width="600"><br><sub>Where a process changes the template: the coral boxes, numbered as in the example below; the grey ones stay as they are</sub>
 
 <img src="assets/canvas-process-item.png" alt="Process_Item: marker 1 on region 2.1 (business rules), marker 2 on region 2.2 (application steps)" width="640"><br><sub>Process_Item: marker 1 on region 2.1 (business rules), marker 2 on region 2.2 (application steps)</sub>
 
@@ -303,17 +305,18 @@ before it leaves. A paid invoice, an amount that is not a number or a wrong e-ma
 report, never reminded. The flow `Invoice_Reminders` was made with *New › Flow from template*; these are the only
 places that changed:
 
-| Subflow | Region | What changed |
-|---|---|---|
-| `Get_Work_Items` | 1 | The columns of the table: Invoice, Customer, Amount, Email, Status. |
-| `Get_Work_Items` | 2 | The demo part removed: a missing workbook is an error. |
-| `Get_Work_Items` | 3 | The workbook read in one action: *Launch Excel* hidden and read only, *Read from Excel worksheet*, *Close Excel*, all inside the function. |
-| `Process_Item` | 1 | The key of the item read from the column Invoice. |
-| `Process_Item` | 2.1 | A first rule: only the status To remind. The rules on the amount and the e-mail are kept. |
-| `Process_Item` | 2.2 | The demo receipt replaced by *Launch Outlook* and *Send email message through Outlook* with *Save as draft*; a new input `in_loc_txt_Account` for the Outlook account. |
-| `Main` | 2.3.1 | The CALL of `Process_Item` gives the new input, from the setting `NotifyAccount`. |
-| `Tests` | 1, 5 and 6 | Five test invoices, a test workbook written then read, one case per rule. |
-| `Config.csv` | - | `InputFile` = the workbook, `CreateDemoInput` = False, `ProcessesToClose` = EXCEL, `NotifyChannel` = OUTLOOK_DRAFT (OUTLOOK_SEND on a PROD row), `NotifyTo` and `NotifyAccount`. |
+| Subflow | Region | In the template | In the example |
+|---|---|---|---|
+| Flow inputs | ① - | `in_glob_txt_ProcessName` = `PAD_REF`, `in_glob_txt_ProjectFolder` = `C:\RPA\PAD_REF` | `Invoice_Reminders` and `C:\RPA\Invoice_Reminders`: the folders are created by the first run. |
+| `Config.csv` | ③ - | `InputFile` = `work-items.csv`, `CreateDemoInput` = True, `ProcessesToClose` empty, `NotifyChannel` = NONE | `InputFile` = the workbook, `CreateDemoInput` = False, `ProcessesToClose` = EXCEL, `NotifyChannel` = OUTLOOK_DRAFT (OUTLOOK_SEND on a PROD row), `NotifyTo` and `NotifyAccount`. |
+| `Get_Work_Items` | ④ 1 | *Create new data table*: Reference, Customer, Amount, Email | The columns of the workbook: Invoice, Customer, Amount, Email, Status. |
+| `Get_Work_Items` | ④ 2 | No file and `CreateDemoInput` True: 6 demo invoices written to a CSV file | The demo part removed: a missing workbook is an error. |
+| `Get_Work_Items` | ④ 3 | *Read from CSV file*, separator ; | The workbook read in one action: *Launch Excel* hidden and read only, *Read from Excel worksheet*, *Close Excel*, all inside the function. |
+| `Process_Item` | ⑤ 1 | The key of the item read from the column Reference | The key of the item read from the column Invoice. |
+| `Process_Item` | ⑤ 2.1 | Three rules: the amount is a number, it is positive, the e-mail is valid | A first rule added: only the status To remind. The three rules are kept. |
+| `Process_Item` | ⑤ 2.2 | *Write text to file*: one receipt per item | *Set variable* for the subject and the HTML body, *Launch Outlook*, *Send email message through Outlook* with *Save as draft*; a new local input `in_loc_txt_Account` for the Outlook account. |
+| `Main` | ⑤ 2.3.1 | The CALL of `Process_Item` with its 3 inputs | The CALL gives the new input too, from the setting `NotifyAccount`. |
+| `Tests` | ⑥ 1, 5, 6 | Five fixed items T-001 to T:005, the demo file, one case per demo rule | Five test invoices (to remind, paid, amount abc, -10, wrong e-mail), a test workbook written then read, one case per rule. |
 
 <img src="assets/example-get-work-items.png" alt="Get_Work_Items of the example: region 3 reads the workbook with Excel and closes it" width="640"><br><sub>Get_Work_Items of the example: region 3 reads the workbook with Excel and closes it</sub>
 

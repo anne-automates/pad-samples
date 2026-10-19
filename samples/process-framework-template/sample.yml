@@ -2,7 +2,7 @@
 # Everything the code already says (subflows, contract, UI elements, line counts, settings, regions) is NOT repeated here.
 # Quote any text that holds a comma inside { }.
 id: process-framework-template
-version: 1.0.2             # x.y.z : see CONTRIBUTING, section Versions
+version: 1.0.3             # x.y.z : see CONTRIBUTING, section Versions
 title: Process framework template
 summary: "A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action."
 category: Templates
@@ -84,6 +84,7 @@ pictures:
     - {file: assets/canvas-main.png, caption: "Coloured regions: Main collapsed, the whole run in 5 numbered regions"}
     - {file: assets/action-note.png, caption: "A note on every action: double-click an action, its note is at the top of the dialog", width: 480}
   to_change:
+    - {file: assets/what-to-change.png, caption: "Where a process changes the template: the coral boxes, numbered as in the example below; the grey ones stay as they are", width: 600}
     - {file: assets/canvas-process-item.png, caption: "Process_Item: marker 1 on region 2.1 (business rules), marker 2 on region 2.2 (application steps)"}
     - {file: assets/canvas-get-work-items.png, caption: "Get_Work_Items: markers on regions 1 (columns), 2 (demo part) and 3 (the source)"}
     - {file: assets/canvas-load-config.png, caption: "Load_Config: the marker shows region 2, the defaults of the settings"}
@@ -185,15 +186,16 @@ example:
     report, never reminded. The flow `Invoice_Reminders` was made with *New › Flow from template*; these are the only
     places that changed:
   changes:
-    - {subflow: Get_Work_Items, region: "1", change: "The columns of the table: Invoice, Customer, Amount, Email, Status."}
-    - {subflow: Get_Work_Items, region: "2", change: "The demo part removed: a missing workbook is an error."}
-    - {subflow: Get_Work_Items, region: "3", change: "The workbook read in one action: *Launch Excel* hidden and read only, *Read from Excel worksheet*, *Close Excel*, all inside the function."}
-    - {subflow: Process_Item, region: "1", change: "The key of the item read from the column Invoice."}
-    - {subflow: Process_Item, region: "2.1", change: "A first rule: only the status To remind. The rules on the amount and the e-mail are kept."}
-    - {subflow: Process_Item, region: "2.2", change: "The demo receipt replaced by *Launch Outlook* and *Send email message through Outlook* with *Save as draft*; a new input `in_loc_txt_Account` for the Outlook account."}
-    - {subflow: Main, region: "2.3.1", change: "The CALL of `Process_Item` gives the new input, from the setting `NotifyAccount`."}
-    - {subflow: Tests, region: "1, 5 and 6", change: "Five test invoices, a test workbook written then read, one case per rule."}
-    - {subflow: Config.csv, region: "-", change: "`InputFile` = the workbook, `CreateDemoInput` = False, `ProcessesToClose` = EXCEL, `NotifyChannel` = OUTLOOK_DRAFT (OUTLOOK_SEND on a PROD row), `NotifyTo` and `NotifyAccount`."}
+    - {subflow: Flow inputs, region: '① -', before: '`in_glob_txt_ProcessName` = `PAD_REF`, `in_glob_txt_ProjectFolder` = `C:\RPA\PAD_REF`', change: '`Invoice_Reminders` and `C:\RPA\Invoice_Reminders`: the folders are created by the first run.'}
+    - {subflow: Config.csv, region: '③ -', before: '`InputFile` = `work-items.csv`, `CreateDemoInput` = True, `ProcessesToClose` empty, `NotifyChannel` = NONE', change: '`InputFile` = the workbook, `CreateDemoInput` = False, `ProcessesToClose` = EXCEL, `NotifyChannel` = OUTLOOK_DRAFT (OUTLOOK_SEND on a PROD row), `NotifyTo` and `NotifyAccount`.'}
+    - {subflow: Get_Work_Items, region: '④ 1', before: '*Create new data table*: Reference, Customer, Amount, Email', change: 'The columns of the workbook: Invoice, Customer, Amount, Email, Status.'}
+    - {subflow: Get_Work_Items, region: '④ 2', before: 'No file and `CreateDemoInput` True: 6 demo invoices written to a CSV file', change: 'The demo part removed: a missing workbook is an error.'}
+    - {subflow: Get_Work_Items, region: '④ 3', before: '*Read from CSV file*, separator ;', change: 'The workbook read in one action: *Launch Excel* hidden and read only, *Read from Excel worksheet*, *Close Excel*, all inside the function.'}
+    - {subflow: Process_Item, region: '⑤ 1', before: 'The key of the item read from the column Reference', change: 'The key of the item read from the column Invoice.'}
+    - {subflow: Process_Item, region: '⑤ 2.1', before: 'Three rules: the amount is a number, it is positive, the e-mail is valid', change: 'A first rule added: only the status To remind. The three rules are kept.'}
+    - {subflow: Process_Item, region: '⑤ 2.2', before: '*Write text to file*: one receipt per item', change: '*Set variable* for the subject and the HTML body, *Launch Outlook*, *Send email message through Outlook* with *Save as draft*; a new local input `in_loc_txt_Account` for the Outlook account.'}
+    - {subflow: Main, region: '⑤ 2.3.1', before: 'The CALL of `Process_Item` with its 3 inputs', change: 'The CALL gives the new input too, from the setting `NotifyAccount`.'}
+    - {subflow: Tests, region: '⑥ 1, 5, 6', before: 'Five fixed items T-001 to T:005, the demo file, one case per demo rule', change: 'Five test invoices (to remind, paid, amount abc, -10, wrong e-mail), a test workbook written then read, one case per rule.'}
   pictures:
     - {file: assets/example-get-work-items.png, caption: "Get_Work_Items of the example: region 3 reads the workbook with Excel and closes it"}
     - {file: assets/example-rules.png, caption: "Process_Item of the example, region 2.1: the new rule on the status comes first"}
