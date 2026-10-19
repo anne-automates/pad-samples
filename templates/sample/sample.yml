@@ -5,7 +5,9 @@ version: 1.0.0                         # x.y.z, see CONTRIBUTING, section Versio
 title: What it does, in a few words
 summary: One sentence that says what it does and what it keeps or produces.
 category: Excel                        # one of categories.yml: Excel | Files & text | PDF | Web | Desktop apps | Email
-kind: flow                             # flow = one job end to end ; component = a reusable local function + an example call
+kind: flow                             # flow = one job end to end ; component = a reusable local function + an example call ;
+                                       # template = a desktop flow template (Save as > Type Template): the code marks with
+                                       # '# TEMPLATE: ...' comments what a process made from it changes
 level: beginner                        # beginner | intermediate | advanced
 minutes: 10                            # setup time, from zero to a successful run
 tags: []
@@ -28,6 +30,22 @@ solution: |
 #       result: What it gives.
 #       verdict: Why it was kept or rejected.
 
+# compared:                            # optional: what it adds to a public reference it draws on
+#   name: The reference (a link in markdown)
+#   intro: One or two lines.
+#   rows: [[Topic, What the reference does, What this sample does]]
+#   kept: What was kept from the reference.
+
+# example:                             # optional: one real process made from the sample (a template above all)
+#   title: "Example: the process X"
+#   need: The business need in two or three lines.
+#   changes: [{subflow: Process_Item, region: "2.1", change: "What changed, without code"}]
+#   pictures: [{file: assets/example-region.png, caption: "..."}]
+#   result: ["What the run gave, measured, with its date."]
+#   result_picture: {file: assets/example-result.png, caption: "..."}
+#   benefits: ["What the process gains."]
+#   minutes: 60
+
 # improve:                             # optional: how to make it better (a measured gain), a section of the overview AND of the setup
 #   title: Make it more accurate - train it on your own data
 #   why: |
@@ -47,6 +65,8 @@ pictures:
   result: {file: assets/result.png, caption: "What the reader gets"}           # required
   # before: {file: assets/before.png, caption: "..."}
   # variables_pane: {file: assets/variables-pane.png, caption: "..."}
+  # features: [{file: assets/feature.png, caption: "..."}]     # with compared: the additions that show best on screen
+  # to_change: [{file: assets/to-change.png, caption: "..."}]   # template: the regions to change, under the table of TEMPLATE comments
   # canvas:
   #   1-Main.txt: {file: assets/canvas.png, caption: "Main after the paste"}
   # actions:                          # the dialog of a key action, shown under the canvas of its subflow

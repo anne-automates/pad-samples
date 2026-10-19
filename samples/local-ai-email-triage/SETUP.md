@@ -28,9 +28,9 @@ Four short emails (two in English, two in French) triaged in one block pasted in
 
 ### 1.2 Paste the block into Main
 
-**+ New flow**, any name, **Create**. Click the empty canvas of `Main`, **Ctrl+V** the block of [`flow/3-Test.txt`](flow/3-Test.txt). Check: 75 lines, Errors pane empty.
+**+ New flow**, any name, **Create**. Click the empty canvas of `Main`, **Ctrl+V** the block of [`flow/3-Test.txt`](flow/3-Test.txt). Check: 69 lines, Errors pane empty.
 
-<details><summary>The code (75 lines)</summary>
+<details><summary>The code (69 lines)</summary>
 
 ```text
 # subflow: Test (global)
@@ -306,9 +306,9 @@ Report: %txt_ReportFile%''' Icon: Display.Icon.Information Buttons: Display.Butt
 
 <img src="assets/canvas-main.png" alt="Main after the paste: the settings to change" width="640"><br><sub>Main after the paste: the settings to change</sub>
 
-**`Triage_Email`** ← [`flow/2-Triage_Email.txt`](flow/2-Triage_Email.txt). Check: 88 lines, Errors pane empty.
+**`Triage_Email`** ← [`flow/2-Triage_Email.txt`](flow/2-Triage_Email.txt). Check: 82 lines, Errors pane empty.
 
-<details><summary>The code (88 lines)</summary>
+<details><summary>The code (82 lines)</summary>
 
 ```text
 # local subflow: Triage_Email
@@ -422,9 +422,9 @@ Double-click an action to check what the paste set in it:
 
 <img src="assets/invoke-local-llm-advanced.png" alt="Advanced: the instructions, temperature 0, a JSON answer, at most 200 tokens, 120 s" width="420"><br><sub>Advanced: the instructions, temperature 0, a JSON answer, at most 200 tokens, 120 s</sub>
 
-**`Classify_Email_Trained`** *(optional)* ← [`flow/4-Classify_Email_Trained.txt`](flow/4-Classify_Email_Trained.txt). Check: 63 lines, Errors pane empty.
+**`Classify_Email_Trained`** *(optional)* ← [`flow/4-Classify_Email_Trained.txt`](flow/4-Classify_Email_Trained.txt). Check: 60 lines, Errors pane empty.
 
-<details><summary>The code (63 lines)</summary>
+<details><summary>The code (60 lines)</summary>
 
 ```text
 # local subflow: Classify_Email_Trained

@@ -44,7 +44,7 @@ them** instead: 92 % right instead of 68 %, about 1 s per email, and a confidenc
 ## Use it in your flow
 
 1. Create the local subflow `Triage_Email` and its 3 inputs and 8 outputs ([how](SETUP.md#2-reusable-version)).
-2. Paste [`flow/2-Triage_Email.txt`](flow/2-Triage_Email.txt) into it (88 lines).
+2. Paste [`flow/2-Triage_Email.txt`](flow/2-Triage_Email.txt) into it (82 lines).
 3. Call it. The example in `Main`:
 
 ```text
@@ -72,7 +72,7 @@ CALL Triage_Email in_loc_txt_EmailText: txt_EmailText in_loc_txt_Endpoint: txt_E
 > `Triage_Email` never stops the flow. Test `out_loc_bool_Ok` after the call and read `out_loc_txt_Error` when it is False.
 
 1. Create the local subflow `Classify_Email_Trained` and its 3 inputs and 5 outputs ([how](SETUP.md#2-reusable-version)).
-2. Paste [`flow/4-Classify_Email_Trained.txt`](flow/4-Classify_Email_Trained.txt) into it (63 lines).
+2. Paste [`flow/4-Classify_Email_Trained.txt`](flow/4-Classify_Email_Trained.txt) into it (60 lines).
 3. Call it. The example in `Main`:
 
 ```text
@@ -207,9 +207,9 @@ Step by step: [Make it more accurate: train it on your own emails](SETUP.md#4-ma
 | Subflow | Scope | Lines | Role |
 |---|---|---|---|
 | [`Main`](flow/1-Main.txt) | Main | 67 | Example call: reads each .txt email of the inbox, calls the function, copies the email into the folder of its category and writes a CSV report. |
-| [`Triage_Email`](flow/2-Triage_Email.txt) | Local | 88 | The reusable part: the text of one email in, its category, urgency, summary, reply flag and 4 details out. Never stops the flow. |
-| [`Test`](flow/3-Test.txt) | Global | 75 | The quick try: four emails written in the block, triaged by the same action and shown in one message. *(optional)* |
-| [`Classify_Email_Trained`](flow/4-Classify_Email_Trained.txt) | Local | 63 | The trained classifier: one email file in, its category and a confidence in percent out. Never stops the flow. *(optional)* |
+| [`Triage_Email`](flow/2-Triage_Email.txt) | Local | 82 | The reusable part: the text of one email in, its category, urgency, summary, reply flag and 4 details out. Never stops the flow. |
+| [`Test`](flow/3-Test.txt) | Global | 69 | The quick try: four emails written in the block, triaged by the same action and shown in one message. *(optional)* |
+| [`Classify_Email_Trained`](flow/4-Classify_Email_Trained.txt) | Local | 60 | The trained classifier: one email file in, its category and a confidence in percent out. Never stops the flow. *(optional)* |
 | [`Triage_Trained`](flow/5-Triage_Trained.txt) | Global | 75 | Example call of the trained classifier on the inbox: a confidence below the threshold goes to to_review. *(optional)* |
 
 - Sample files, in [`input/`](input/): `email-01.txt`, `email-02.txt`, `email-03.txt`, `email-04.txt`, `email-05.txt`, `email-06.txt`, `email-07.txt`, `email-08.txt`, `email-09.txt`, `email-10.txt`, `email-11.txt`, `email-12.txt`

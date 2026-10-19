@@ -73,7 +73,7 @@ CALL Count_Business_Days in_loc_txt_StartDate: txt_StartDate in_loc_txt_EndDate:
 > `Count_Business_Days` never stops the flow. Test `out_loc_bool_Ok` after the call and read `out_loc_txt_Error` when it is False.
 
 1. Create the local subflow `Get_Public_Holidays` and its 4 inputs and 3 outputs ([how](SETUP.md#2-reusable-version)).
-2. Paste [`flow/3-Get_Public_Holidays.txt`](flow/3-Get_Public_Holidays.txt) into it (64 lines).
+2. Paste [`flow/3-Get_Public_Holidays.txt`](flow/3-Get_Public_Holidays.txt) into it (60 lines).
 3. Call it. The example in `Main`:
 
 ```text
@@ -227,8 +227,8 @@ Step by step: [Where the holidays come from: a file, a public API, or both](SETU
 |---|---|---|---|
 | [`Main`](flow/1-Main.txt) | Main | 55 | The complete example: reads the company days from a file and the public holidays of a country from the API, merges them, calls the count, shows the result and its sources. |
 | [`Count_Business_Days`](flow/2-Count_Business_Days.txt) | Local | 48 | The count: two dates, the days off of the week and a list of holidays in; the count, three details, a flag and a message out. One script action. Never stops the flow. |
-| [`Get_Public_Holidays`](flow/3-Get_Public_Holidays.txt) | Local | 64 | The public holidays of a country for the years of a period, from a public API: a country code, an optional region and two dates in; a list of dates, a flag and a message out. Never stops the flow. |
-| [`Quick_Try`](flow/4-Quick_Try.txt) | Global | 77 | The quick try: the API call and the count in one block, without the functions. *(optional)* |
+| [`Get_Public_Holidays`](flow/3-Get_Public_Holidays.txt) | Local | 60 | The public holidays of a country for the years of a period, from a public API: a country code, an optional region and two dates in; a list of dates, a flag and a message out. Never stops the flow. |
+| [`Quick_Try`](flow/4-Quick_Try.txt) | Global | 73 | The quick try: the API call and the count in one block, without the functions. *(optional)* |
 | [`Tests`](flow/5-Tests.txt) | Global | 56 | Replays the 59 cases of Business_Days_Cases.csv through Count_Business_Days and writes a report next to it: one line per case, the total at the end. Run it with Run from here on its first action. *(optional)* |
 
 - Sample files, in [`input/`](input/): `Business_Days_Cases.csv`, `Company_Days_2026.csv`, `Holidays_2026.csv`

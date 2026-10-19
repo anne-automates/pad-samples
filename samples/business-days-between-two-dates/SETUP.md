@@ -22,9 +22,9 @@ The whole method in one block pasted into Main, for France and the year 2026. No
 
 ### 1.1 Paste the block into Main
 
-**+ New flow**, any name, **Create**. Click the empty canvas of `Main`, **Ctrl+V** the block of [`flow/4-Quick_Try.txt`](flow/4-Quick_Try.txt). Check: 77 lines, Errors pane empty.
+**+ New flow**, any name, **Create**. Click the empty canvas of `Main`, **Ctrl+V** the block of [`flow/4-Quick_Try.txt`](flow/4-Quick_Try.txt). Check: 73 lines, Errors pane empty.
 
-<details><summary>The code (77 lines)</summary>
+<details><summary>The code (73 lines)</summary>
 
 ```text
 # subflow: Quick_Try (global)
@@ -429,9 +429,9 @@ SET out_loc_bool_Ok TO True
 
 <img src="assets/canvas.png" alt="Count_Business_Days after the paste: the four inputs in one text, then the script action" width="640"><br><sub>Count_Business_Days after the paste: the four inputs in one text, then the script action</sub>
 
-**`Get_Public_Holidays`** ← [`flow/3-Get_Public_Holidays.txt`](flow/3-Get_Public_Holidays.txt). Check: 64 lines, Errors pane empty.
+**`Get_Public_Holidays`** ← [`flow/3-Get_Public_Holidays.txt`](flow/3-Get_Public_Holidays.txt). Check: 60 lines, Errors pane empty.
 
-<details><summary>The code (64 lines)</summary>
+<details><summary>The code (60 lines)</summary>
 
 ```text
 # local subflow: Get_Public_Holidays
