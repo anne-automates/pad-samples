@@ -21,9 +21,9 @@ Every sample starts with the quickest way to see it work, then states the proble
 ## Latest
 
 - 2026-10-19 · [Process framework template](samples/process-framework-template/README.md) v1.0.1
-- 2026-10-07 · [Business days between two dates](samples/business-days-between-two-dates/README.md) v1.0.1
+- 2026-10-19 · [Email triage by a local AI model](samples/local-ai-email-triage/README.md) v1.1.3
+- 2026-10-19 · [Business days between two dates](samples/business-days-between-two-dates/README.md) v1.0.2
 - 2026-10-01 · [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md) v1.1.1
-- 2026-10-01 · [Email triage by a local AI model](samples/local-ai-email-triage/README.md) v1.1.2
 
 ## Excel
 
@@ -39,7 +39,7 @@ Outlook messages read, filed, drafted or sent.
 
 | | Sample | Techniques | Try it | Requires |
 |---|---|---|---|---|
-| <img src="samples/local-ai-email-triage/assets/cover.png" width="150"> | **[Email triage by a local AI model](samples/local-ai-email-triage/README.md)**<br>Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.<br><sub>Reusable component · Intermediate · v1.1.2</sub> | Local function, Errors as outputs, Local AI model, JSON by regex, Trained classifier | 2 min, nothing to create | Ollama with the model llama3.2:3b |
+| <img src="samples/local-ai-email-triage/assets/cover.png" width="150"> | **[Email triage by a local AI model](samples/local-ai-email-triage/README.md)**<br>Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.<br><sub>Reusable component · Intermediate · v1.1.3</sub> | Local function, Errors as outputs, Local AI model, JSON by regex, Trained classifier | 2 min, nothing to create | Ollama with the model llama3.2:3b |
 
 ## Dates & time
 
@@ -47,7 +47,7 @@ Deadlines, working days and periods counted the way the business counts them.
 
 | | Sample | Techniques | Try it | Requires |
 |---|---|---|---|---|
-| <img src="samples/business-days-between-two-dates/assets/cover.png" width="150"> | **[Business days between two dates](samples/business-days-between-two-dates/README.md)**<br>Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.<br><sub>Reusable component · Intermediate · v1.0.1</sub> | Local function, Errors as outputs, PowerShell action, Open data API, JSON by regex, Test cases file | 2 min, nothing to create | PAD only |
+| <img src="samples/business-days-between-two-dates/assets/cover.png" width="150"> | **[Business days between two dates](samples/business-days-between-two-dates/README.md)**<br>Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.<br><sub>Reusable component · Intermediate · v1.0.2</sub> | Local function, Errors as outputs, PowerShell action, Open data API, JSON by regex, Test cases file | 2 min, nothing to create | PAD only |
 
 ## Templates
 

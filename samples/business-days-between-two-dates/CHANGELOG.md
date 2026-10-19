@@ -1,5 +1,10 @@
 # Changelog - Business days between two dates
 
+## 1.0.2 - 2026-10-19
+
+- Setup page and file list: the lines to check after a paste no longer count the error handling of an action, which is set in its dialog and is not a line of the canvas. `Get_Public_Holidays` shows 60 lines (64 before), `Quick_Try` 73 (77 before), the numbers the designer shows.
+- The flow did not change: no new run needed.
+
 ## 1.0.1 - 2026-10-07
 
 - The gallery card shows an illustration (`assets/cover.png`). The flow did not change: no new run needed.

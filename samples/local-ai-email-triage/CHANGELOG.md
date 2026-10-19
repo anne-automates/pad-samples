@@ -1,5 +1,10 @@
 # Changelog - Email triage by a local AI model
 
+## 1.1.3 - 2026-10-19
+
+- Setup page and file list: the lines to check after a paste no longer count the error handling of an action, which is set in its dialog and is not a line of the canvas. `Triage_Email` shows 82 lines (88 before), `Test` 69 (75 before), `Classify_Email_Trained` 60 (63 before), the numbers the designer shows.
+- The flow did not change: no new run needed.
+
 ## 1.1.2 - 2026-10-01
 
 - Setup page: the path Reusable version asks for 3 inputs and 8 outputs (the optional trained subflows were counted in it); the values to change in the quick try each have their own description, and a text on several lines shows its first line. One comment added in `Test` above the four sample emails: no action changed, no new run needed.
