@@ -154,7 +154,7 @@
       "category": "Templates",
       "kind": "template",
       "level": "intermediate",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "released": "2026-10-19",
       "techniques": [
         "desktop-flow-template",
@@ -195,7 +195,8 @@
         }
       ],
       "page": "samples/process-framework-template/README.md",
-      "image": "samples/process-framework-template/assets/result.png"
+      "image": "samples/process-framework-template/assets/result.png",
+      "cover": "samples/process-framework-template/assets/cover.png"
     }
   ]
 }

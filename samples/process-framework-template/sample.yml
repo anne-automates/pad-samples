@@ -2,7 +2,7 @@
 # Everything the code already says (subflows, contract, UI elements, line counts, settings, regions) is NOT repeated here.
 # Quote any text that holds a comma inside { }.
 id: process-framework-template
-version: 1.0.1             # x.y.z : see CONTRIBUTING, section Versions
+version: 1.0.2             # x.y.z : see CONTRIBUTING, section Versions
 title: Process framework template
 summary: "A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action."
 category: Templates
@@ -77,6 +77,7 @@ limits:
   - "`out_glob_txt_ErrorMessage` can carry data of an item: mark it as sensitive when the items hold personal data."
 
 pictures:
+  cover: {file: assets/cover.png, caption: "Illustration: the template with its coloured regions and its tests, copied into new processes that each change one part, invoice reminders in front"}
   result: {file: assets/result.png, caption: "The run report of Main on the 6 demo items: 2 successes, 3 business exceptions, 1 system exception after 3 attempts"}
   features:
     - {file: assets/variables-pane.png, caption: "Local functions: Process_Item receives 3 inputs and returns 4 outputs (Variables pane, section Local, values of the last item)", width: 300}

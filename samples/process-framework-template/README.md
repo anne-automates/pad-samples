@@ -6,9 +6,9 @@
 
 A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
 
-**Desktop flow template** · Intermediate · Requires PAD only · Tested on PAD 2.73.155 · v1.0.1
+**Desktop flow template** · Intermediate · Requires PAD only · Tested on PAD 2.73.155 · v1.0.2
 
-[**Step-by-step setup**](SETUP.md) · [Download the sample (zip)](https://github.com/anne-automates/pad-samples/releases/download/process-framework-template-v1.0.1/process-framework-template-v1.0.1.zip) · [Changelog](CHANGELOG.md)
+[**Step-by-step setup**](SETUP.md) · [Download the sample (zip)](https://github.com/anne-automates/pad-samples/releases/download/process-framework-template-v1.0.2/process-framework-template-v1.0.2.zip) · [Changelog](CHANGELOG.md)
 
 *For e-learning purposes only: try it in a test environment with the sample data, and review it before any real use. [Disclaimer](../../START-HERE.md#disclaimer)*
 

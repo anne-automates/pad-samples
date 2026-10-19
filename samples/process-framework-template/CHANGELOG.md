@@ -1,5 +1,9 @@
 # Changelog - Process framework template
 
+## 1.0.2 - 2026-10-19
+
+- The gallery card shows an illustration (`assets/cover.png`). The flow did not change: no new run needed.
+
 ## 1.0.1 - 2026-10-19
 
 - The diagram of *How it works* is readable: `Main` on the left, the 10 functions it calls in one column on its right (688 x 420 pixels on a wide screen, instead of one row of 688 x 35 pixels).
