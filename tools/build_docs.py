@@ -303,8 +303,8 @@ class Sample:
                 err.append("example: {title, need, changes: [{subflow, region, change}], result, benefits, pictures (optional), result_picture (optional), minutes (optional)}")
             else:
                 for x in ex["changes"]:
-                    if not isinstance(x, dict) or set(x) != {"subflow", "region", "change"}:
-                        err.append(f"example.changes: {x} must be {{subflow, region, change}} (quote a text that holds a comma)")
+                    if not isinstance(x, dict) or set(x) - {"subflow", "region", "change", "before"} or not {"subflow", "region", "change"} <= set(x):
+                        err.append(f"example.changes: {x} must be {{subflow, region, change, before (optional)}} (quote a text that holds a comma)")
                 for p in ex.get("pictures", []) + ([ex["result_picture"]] if ex.get("result_picture") else []):
                     if not isinstance(p, dict) or not p.get("file") or not (self.folder / p["file"]).exists():
                         err.append(f"example: picture {p} must be {{file, caption}} and the file must exist")
@@ -488,8 +488,16 @@ class Sample:
         ex = self.card.get("example")
         if not ex:
             return []
-        md = [f"## {ex['title']}", "", ex["need"].strip(), "", "| Subflow | Region | What changed |", "|---|---|---|"]
-        md += [f"| `{x['subflow']}` | {x['region']} | {x['change']} |" for x in ex["changes"]] + [""]
+        md = [f"## {ex['title']}", "", ex["need"].strip(), ""]
+        name = lambda s: s if " " in s else f"`{s}`"   # a subflow or a file in code, a plain label (Flow inputs) as text
+        if any(x.get("before") for x in ex["changes"]):
+            # what the sample holds there, then what the example put in its place: the reader sees the swap
+            here = "In the template" if self.card["kind"] == "template" else "In the sample"
+            md += [f"| Subflow | Region | {here} | In the example |", "|---|---|---|---|"]
+            md += [f"| {name(x['subflow'])} | {x['region']} | {x.get('before', '')} | {x['change']} |" for x in ex["changes"]] + [""]
+        else:
+            md += ["| Subflow | Region | What changed |", "|---|---|---|"]
+            md += [f"| {name(x['subflow'])} | {x['region']} | {x['change']} |" for x in ex["changes"]] + [""]
         for p in ex.get("pictures", []):
             md += [fig(p, p.get("width", 640)), ""]
         md += ["**Result.**", ""] + [f"- {r}" for r in ex["result"]] + [""]
