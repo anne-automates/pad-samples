@@ -1,0 +1,64 @@
+# local subflow: Get_Work_Items
+# inputs: in_loc_txt_InputFile, in_loc_bool_CreateDemo
+# outputs: out_loc_tbl_Items, out_loc_num_Count, out_loc_bool_Ok, out_loc_txt_Detail
+# Get_Work_Items: reads every work item once, as a table (one row = one transaction). Never throws.
+# TEMPLATE: replace region 3 by the real source (Excel, SQL, API, export of a business application), give region 1 the columns of that source and remove the demo part of region 2 ; keep one row per item.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Every output is set before the first action that can fail.'
+**REGION 1. Outputs : initialised before the first action that can fail
+@@CustomNote: 'Empty table with the expected columns : even a failed read returns a table Main can loop over.'
+Variables.CreateNewDatatable InputTable: { ^['Reference', 'Customer', 'Amount', 'Email'] } DataTable=> out_loc_tbl_Items
+@@CustomNote: '0 until the file is read.'
+SET out_loc_num_Count TO 0
+@@CustomNote: 'Optimistic flag, set to False by any failure below.'
+SET out_loc_bool_Ok TO True
+@@CustomNote: 'Explains a refusal or the demo mode.'
+SET out_loc_txt_Detail TO $''''''
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Guard : a missing source is an error, except in demo mode where the template creates its own data.'
+**REGION 2. Guard : a missing input file is an error, unless the demo file is requested
+@@CustomNote: 'The source file is not there.'
+IF (File.IfFile.DoesNotExist File: in_loc_txt_InputFile) THEN
+    @@CustomNote: 'A real process has CreateDemoInput = False : a missing file must stop the run, not create fake data.'
+    IF in_loc_bool_CreateDemo = False THEN
+        @@CustomNote: 'Refused.'
+        SET out_loc_bool_Ok TO False
+        @@CustomNote: 'The detail gives the expected path : the operator knows where to put the file.'
+        SET out_loc_txt_Detail TO $'''Input file not found: %in_loc_txt_InputFile%'''
+        @@CustomNote: 'Leaves with Ok = False and a detail.'
+        EXIT FUNCTION
+    END
+    # Demo data : 2 items succeed, 3 break a business rule, 1 raises a system exception (a file name Windows refuses)
+    @@CustomNote: 'Demo data : 2 items succeed, 3 break a business rule, 1 raises a system exception - the three outcomes in one run.'
+    Variables.CreateNewDatatable InputTable: { ^['Reference', 'Customer', 'Amount', 'Email'], ['INV-001', 'Contoso', '1250', 'ap@contoso.com'], ['INV-002', 'Fabrikam', '-10', 'billing@fabrikam.com'], ['INV-003', 'Northwind', 'abc', 'finance.northwind@example.com'], ['INV-004', 'Tailspin', '300', 'no-email'], ['INV:005', 'Litware', '99', 'ap.litware@example.com'], ['INV-006', 'Adventure Works', '42', 'ap.adventureworks@example.com'] } DataTable=> tbl_Demo
+    @@CustomNote: 'Written like any input file : the demo exercises the real read below.'
+    File.WriteToCSVFile.WriteCSV VariableToWrite: tbl_Demo CSVFile: in_loc_txt_InputFile CsvFileEncoding: File.CSVEncoding.UTF8 IncludeColumnNames: True IfFileExists: File.IfFileExists.Overwrite ColumnsSeparator: File.CSVColumnsSeparator.Semicolon
+    ON ERROR
+        SET out_loc_bool_Ok TO False
+        SET out_loc_txt_Detail TO $'''Demo input file could not be written: %in_loc_txt_InputFile%'''
+    END
+    @@CustomNote: 'Demo file not written : nothing to read.'
+    IF out_loc_bool_Ok = False THEN
+        @@CustomNote: 'Leaves with Ok = False and a detail.'
+        EXIT FUNCTION
+    END
+    @@CustomNote: 'The log says the data is demo data : nobody confuses it with real work.'
+    SET out_loc_txt_Detail TO $'''Demo input file created (CreateDemoInput = True).'''
+END
+**ENDREGION
+@@regionColor: '#C6E0B4'
+@@CustomNote: 'Input : the whole file in one action ; replace this region to plug another source (Excel, SQL, API).'
+**REGION 3. Input : the whole file in one action
+@@CustomNote: 'Separator ; and UTF-8, the same as the reports : the file opens in Excel in any language.'
+File.ReadFromCSVFile.ReadCSV CSVFile: in_loc_txt_InputFile Encoding: File.CSVEncoding.UTF8 TrimFields: True FirstLineContainsColumnNames: True ColumnsSeparator: File.CSVColumnsSeparator.Semicolon CSVTable=> out_loc_tbl_Items
+ON ERROR
+    SET out_loc_bool_Ok TO False
+    SET out_loc_txt_Detail TO $'''Input file could not be read: %in_loc_txt_InputFile%'''
+END
+@@CustomNote: 'Counted only when the read worked.'
+IF out_loc_bool_Ok = True THEN
+    @@CustomNote: 'Number of items : the first figure of the run log and of the report.'
+    SET out_loc_num_Count TO out_loc_tbl_Items.RowsCount
+END
+**ENDREGION

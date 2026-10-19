@@ -1,0 +1,60 @@
+# local subflow: Write_Log
+# inputs: in_loc_txt_LogFile, in_loc_txt_RunId, in_loc_txt_MinLevel, in_loc_txt_Level, in_loc_txt_Step, in_loc_txt_Message
+# outputs: out_loc_txt_Status
+# Write_Log: one line per event, filtered by level (DEBUG < INFO < WARN < ERROR < FATAL) ; WARN and above also go to the run log of Power Automate. Status WRITTEN, FILTERED or FAILED, never an exception.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Levels are ranked by their position in one text : simple, and no table to maintain.'
+**REGION 1. Output and level ranks : the rank of a level is its position in the ordered list
+@@CustomNote: 'FILTERED until the line is really written.'
+SET out_loc_txt_Status TO $'''FILTERED'''
+@@CustomNote: 'Upper case : callers may write info or INFO.'
+Text.ChangeCase Text: in_loc_txt_Level NewCase: Text.CaseOption.UpperCase Result=> txt_Level
+@@CustomNote: 'Upper case for the minimum level too.'
+Text.ChangeCase Text: in_loc_txt_MinLevel NewCase: Text.CaseOption.UpperCase Result=> txt_MinLevel
+@@CustomNote: 'Rank of the line : 0 DEBUG, 6 INFO, 11 WARN, 16 ERROR, 22 FATAL.'
+Text.ParseText.ParseForFirstOccurrence Text: $'''DEBUG INFO WARN ERROR FATAL''' TextToFind: txt_Level StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_LevelRank
+@@CustomNote: 'Rank of the minimum level asked by the run (input in_glob_txt_LogLevel).'
+Text.ParseText.ParseForFirstOccurrence Text: $'''DEBUG INFO WARN ERROR FATAL''' TextToFind: txt_MinLevel StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_MinRank
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Guard : a line below the minimum level costs nothing.'
+**REGION 2. Guard : a line below the minimum level is not written ; an unknown minimum level means INFO
+@@CustomNote: 'An unknown minimum level must not silence the log.'
+IF num_MinRank < 0 THEN
+    @@CustomNote: 'Falls back to INFO, the usual production level.'
+    SET num_MinRank TO 6
+END
+@@CustomNote: 'Below the minimum level : not written, and not an error.'
+IF num_LevelRank < num_MinRank THEN
+    @@CustomNote: 'Leaves with the status FILTERED.'
+    EXIT FUNCTION
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'Output : one line per event, the same layout in every process.'
+**REGION 3. Output : one line, fields separated by ' | ', the message kept on one line
+@@CustomNote: 'Time of the event.'
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> date_Now
+@@CustomNote: 'Milliseconds : orders events that happen in the same second.'
+Text.ConvertDateTimeToText.FromCustomDateTime DateTime: date_Now CustomFormat: $'''yyyy-MM-dd HH:mm:ss.fff''' Result=> txt_Time
+@@CustomNote: 'The message is kept on one line : a line break would break every script that reads the log.'
+Text.Replace.ReplaceTextWithRegex Text: in_loc_txt_Message TextToFind: $'''\\s*[\\r\\n]+\\s*''' IgnoreCase: False ReplaceWith: $''' / ''' ActivateEscapeSequences: False Result=> txt_Message
+@@CustomNote: 'time | run id | level | step | message : readable by a person, split by a script on the pipe.'
+SET txt_Line TO $'''%txt_Time% | %in_loc_txt_RunId% | %txt_Level% | %in_loc_txt_Step% | %txt_Message%'''
+@@CustomNote: 'WRITTEN unless the write fails just below.'
+SET out_loc_txt_Status TO $'''WRITTEN'''
+@@CustomNote: 'Append : one file per day keeps every run of the day.'
+File.WriteText File: in_loc_txt_LogFile TextToWrite: txt_Line AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+ON ERROR
+    SET out_loc_txt_Status TO $'''FAILED'''
+END
+# ERROR and FATAL (rank 16 and more), WARN (rank 11) : visible in the run details of Power Automate without opening the log file
+@@CustomNote: 'ERROR and FATAL also reach Power Automate : visible in the run details of the cloud flow without opening the log file.'
+IF num_LevelRank >= 16 THEN
+    @@CustomNote: 'Logged as an error in Power Automate.'
+    Logging.LogMessage Message: txt_Line LogLevel: Logging.LogLevel.ErrorLevel
+ELSE IF num_LevelRank >= 11 THEN
+    @@CustomNote: 'WARN : logged as a warning in Power Automate.'
+    Logging.LogMessage Message: txt_Line LogLevel: Logging.LogLevel.WarningLevel
+END
+**ENDREGION

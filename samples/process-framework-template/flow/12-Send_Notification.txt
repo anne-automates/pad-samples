@@ -1,0 +1,72 @@
+# local subflow: Send_Notification
+# inputs: in_loc_txt_Channel, in_loc_txt_To, in_loc_txt_Account, in_loc_txt_Subject, in_loc_txt_HtmlBody
+# outputs: out_loc_bool_Sent, out_loc_txt_Detail
+# Send_Notification: the run report by Outlook, as a draft (OUTLOOK_DRAFT) or sent (OUTLOOK_SEND) ; NONE disables it. Outlook is opened and used here only. Never throws.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Every output is set before the first action that can fail.'
+**REGION 1. Outputs : initialised before the first action that can fail
+@@CustomNote: 'False until Outlook accepts the message.'
+SET out_loc_bool_Sent TO False
+@@CustomNote: 'Says what happened : disabled, refused, draft or sent.'
+SET out_loc_txt_Detail TO $''''''
+@@CustomNote: 'Upper case : none and NONE mean the same.'
+Text.ChangeCase Text: in_loc_txt_Channel NewCase: Text.CaseOption.UpperCase Result=> txt_Channel
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Guards : nothing leaves without an explicit channel and a recipient.'
+**REGION 2. Guards : a disabled channel, an unknown channel or no recipient sends nothing
+@@CustomNote: 'NONE is the default : a template never writes to anyone by surprise.'
+IF txt_Channel = $'''NONE''' OR txt_Channel = $'''''' THEN
+    @@CustomNote: 'Disabled, not an error.'
+    SET out_loc_txt_Detail TO $'''Notification disabled (NotifyChannel = NONE)'''
+    @@CustomNote: 'Leaves without starting Outlook.'
+    EXIT FUNCTION
+END
+@@CustomNote: 'A typo in the channel is reported instead of guessed.'
+IF txt_Channel <> $'''OUTLOOK_DRAFT''' AND txt_Channel <> $'''OUTLOOK_SEND''' THEN
+    @@CustomNote: 'The detail lists the accepted values.'
+    SET out_loc_txt_Detail TO $'''Unknown NotifyChannel: %in_loc_txt_Channel% (NONE, OUTLOOK_DRAFT or OUTLOOK_SEND)'''
+    @@CustomNote: 'Leaves without starting Outlook.'
+    EXIT FUNCTION
+END
+@@CustomNote: 'No recipient : nothing to send.'
+IF in_loc_txt_To = $'''''' THEN
+    @@CustomNote: 'The detail names the missing setting.'
+    SET out_loc_txt_Detail TO $'''NotifyTo is empty: nothing sent'''
+    @@CustomNote: 'Leaves without starting Outlook.'
+    EXIT FUNCTION
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'Output : Outlook is opened and used inside this function, because an instance cannot cross a local subflow.'
+**REGION 3. Output : Outlook started (or attached), the message saved as a draft or sent
+@@CustomNote: 'OUTLOOK_DRAFT saves a draft a person reviews ; OUTLOOK_SEND sends at once.'
+SET bool_Draft TO txt_Channel = $'''OUTLOOK_DRAFT'''
+@@CustomNote: 'Optimistic flag, set to False if Outlook cannot start.'
+SET bool_Launched TO True
+@@CustomNote: 'Starts Outlook, or attaches to the Outlook already open on the session.'
+Outlook.Launch Instance=> inst_Outlook
+ON ERROR
+    SET bool_Launched TO False
+END
+@@CustomNote: 'Outlook unavailable : reported, the run goes on.'
+IF bool_Launched = False THEN
+    @@CustomNote: 'The detail tells the support team why nothing was sent.'
+    SET out_loc_txt_Detail TO $'''Outlook could not be started'''
+    @@CustomNote: 'Leaves without a message.'
+    EXIT FUNCTION
+END
+@@CustomNote: 'Optimistic : set back to False if Outlook refuses the message.'
+SET out_loc_bool_Sent TO True
+@@CustomNote: 'The HTML report as the body ; the account must be one of the Outlook profile.'
+Outlook.SendEmailThroughOutlook.SendEmail Instance: inst_Outlook Account: in_loc_txt_Account SendTo: in_loc_txt_To Subject: in_loc_txt_Subject Body: in_loc_txt_HtmlBody IsBodyHtml: True IsDraft: bool_Draft
+ON ERROR
+    SET out_loc_bool_Sent TO False
+    SET out_loc_txt_Detail TO $'''Outlook refused the message (account %in_loc_txt_Account%, to %in_loc_txt_To%)'''
+END
+@@CustomNote: 'Accepted by Outlook.'
+IF out_loc_bool_Sent = True THEN
+    @@CustomNote: 'The detail says draft or sent, and to whom.'
+    SET out_loc_txt_Detail TO $'''Report %txt_Channel% to %in_loc_txt_To%'''
+END
+**ENDREGION

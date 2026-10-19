@@ -6,7 +6,7 @@
 
 Every sample starts with the quickest way to see it work, then states the problem, the design and the alternatives it beat, the contract of its reusable parts, its limits and the PAD versions it ran on.
 
-**3 samples** · 3 categories · 11 techniques · [Samples by technique](TECHNIQUES.md) · [How the samples are organised](START-HERE.md) · [Contribute](CONTRIBUTING.md) · [Submit a challenge](https://github.com/anne-automates/anne-automates.github.io/issues/new?template=submit-a-challenge.yml) · [Copilot Studio samples](https://anne-automates.github.io/copilot-studio-samples/)
+**4 samples** · 4 categories · 17 techniques · [Samples by technique](TECHNIQUES.md) · [How the samples are organised](START-HERE.md) · [Contribute](CONTRIBUTING.md) · [Submit a challenge](https://github.com/anne-automates/anne-automates.github.io/issues/new?template=submit-a-challenge.yml) · [Copilot Studio samples](https://anne-automates.github.io/copilot-studio-samples/)
 
 > [!IMPORTANT]
 > **For e-learning purposes.** The samples teach; they are not production-ready. Read the [disclaimer](START-HERE.md#disclaimer).
@@ -16,7 +16,14 @@ Every sample starts with the quickest way to see it work, then states the proble
 
 <!-- gallery:start -->
 
-**Categories:** [Excel](#excel) (1) · [Email](#email) (1) · [Dates & time](#dates-time) (1)
+**Categories:** [Excel](#excel) (1) · [Email](#email) (1) · [Dates & time](#dates-time) (1) · [Templates](#templates) (1)
+
+## Latest
+
+- 2026-10-19 · [Process framework template](samples/process-framework-template/README.md) v1.0.0
+- 2026-10-07 · [Business days between two dates](samples/business-days-between-two-dates/README.md) v1.0.1
+- 2026-10-01 · [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md) v1.1.1
+- 2026-10-01 · [Email triage by a local AI model](samples/local-ai-email-triage/README.md) v1.1.2
 
 ## Excel
 
@@ -41,6 +48,14 @@ Deadlines, working days and periods counted the way the business counts them.
 | | Sample | Techniques | Try it | Requires |
 |---|---|---|---|---|
 | <img src="samples/business-days-between-two-dates/assets/cover.png" width="150"> | **[Business days between two dates](samples/business-days-between-two-dates/README.md)**<br>Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.<br><sub>Reusable component · Intermediate · v1.0.1</sub> | Local function, Errors as outputs, PowerShell action, Open data API, JSON by regex, Test cases file | 2 min, nothing to create | PAD only |
+
+## Templates
+
+Desktop flow templates - every process starts from a tested skeleton and changes only its marked regions.
+
+| | Sample | Techniques | Try it | Requires |
+|---|---|---|---|---|
+| <img src="samples/process-framework-template/assets/result.png" width="150"> | **[Process framework template](samples/process-framework-template/README.md)**<br>A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.<br><sub>Desktop flow template · Intermediate · v1.0.0</sub> | Flow template, Local function, Coloured regions, Action notes, Business and system exceptions, Errors as outputs, Settings per environment, Tests subflow, Outlook draft | 90 min, 10 local subflows, 35 inputs, 35 outputs | PAD only |
 
 <!-- gallery:end -->
 

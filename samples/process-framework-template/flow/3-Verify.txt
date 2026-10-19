@@ -1,0 +1,18 @@
+# local subflow: Verify
+# inputs: in_loc_txt_Case, in_loc_bool_Ok, in_loc_txt_Detail, in_loc_txt_ReportIn, in_loc_txt_ReportFile
+# outputs: out_loc_txt_Report
+# Appends a PASS / FAIL line to the report and writes it to the report file at once, so a case that stops the flow loses nothing.
+@@CustomNote: 'One verdict per case : the caller computed the boolean, Verify only formats and records it.'
+IF in_loc_bool_Ok = True THEN
+    @@CustomNote: 'PASS lines are short : the case name is enough.'
+    SET txt_ReportLine TO $'''PASS - %in_loc_txt_Case%'''
+ELSE
+    @@CustomNote: 'A FAIL line carries the observed values : the failure explains itself without a new run.'
+    SET txt_ReportLine TO $'''FAIL - %in_loc_txt_Case% : %in_loc_txt_Detail%'''
+END
+@@CustomNote: 'The report is returned to the caller so the total can be counted at the end.'
+Text.AppendLine Text: in_loc_txt_ReportIn LineToAppend: txt_ReportLine Result=> out_loc_txt_Report
+@@CustomNote: 'Written at once, in append : a case that stops the harness loses none of the lines before it.'
+File.WriteText File: in_loc_txt_ReportFile TextToWrite: txt_ReportLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+@@CustomNote: 'Also sent to the Power Automate run log : a test run can be read without opening the file.'
+Logging.LogMessage Message: txt_ReportLine LogLevel: Logging.LogLevel.InfoLevel

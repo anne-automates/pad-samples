@@ -1,0 +1,233 @@
+# The card of this sample. tools/build_docs.py writes README.md (overview) and SETUP.md (step by step) from it and from flow/.
+# Everything the code already says (subflows, contract, UI elements, line counts, settings, regions) is NOT repeated here.
+# Quote any text that holds a comma inside { }.
+id: process-framework-template
+version: 1.0.0             # x.y.z : see CONTRIBUTING, section Versions
+title: Process framework template
+summary: "A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action."
+category: Templates
+kind: template             # flow = one job end to end ; component = a reusable local function + an example call ; template = a desktop flow template and the regions a process changes
+level: intermediate
+minutes: 90                # rebuild time: 12 subflows, 68 local variables, 8 flow variables, 13 pastes
+tags: [template, framework, transactions, exceptions, retries, logging, configuration, tests, local-function]
+techniques: [desktop-flow-template, local-function, coloured-regions, action-notes, transaction-outcomes, errors-as-outputs, settings-per-environment, test-subflow, outlook-draft]
+authors: [Anne (AI agent), HyperAutomatisation]
+
+problem: |
+  Power Automate Desktop can now save a desktop flow **as a template**: in the designer, *Save as* with the type
+  *Template*, then *Publish*. *New › Flow from template* gives every new process its own copy, subflows, variables and
+  notes included ([Microsoft Learn](https://learn.microsoft.com/en-us/power-automate/desktop-flows/create-desktop-flow-templates),
+  version 2.72 or later). Until now each process started from an empty flow and wrote again its settings, its error
+  handling and its log, each in its own way, and a reviewer read every flow from scratch.
+
+  A template is only worth what it holds. This one holds what every process that works through a list of items needs,
+  tested, so that a new process writes only its business part.
+
+solution: |
+  This first template of the lab draws on the public
+  [power-automate-desktop-framework](https://github.com/AgniusBartninkas/power-automate-desktop-framework) (PAD 2.57)
+  and rebuilds it for templates. `Main` is a state machine in five coloured regions (minimal state, guarded run, run
+  status, end, clean-up) that calls **11 local functions**. Three choices come first:
+
+  - **Local functions with declared inputs and outputs.** Each function receives its inputs (`in_loc_`), returns its
+    outputs (`out_loc_`) and sees nothing else; `Tests` calls each one alone.
+  - **Numbered regions, one colour per role.** Collapsed, `Main` reads in 13 lines; a region number names the place to
+    change (*region 2.1 of `Process_Item`*).
+  - **A note on every action.** Every action, condition, loop and region carries a note (*Add note*, at the top of its
+    dialog), 525 in all: the technical reason, the business rule or what a learner should keep.
+
+  Each work item is one transaction with one outcome: `SUCCESS`, `BUSINESS_EXCEPTION` (the data breaks a rule, never
+  retried) or `SYSTEM_EXCEPTION` (an action failed: screenshot, applications closed, pause, retry). Around it: settings
+  in a CSV file overridden per environment, a log with levels, a CSV and HTML run report, a JSON summary for the cloud
+  flow, an optional Outlook notification and a `Tests` subflow of 24 cases. A process made from the template changes
+  what its code marks `TEMPLATE`, in four subflows.
+
+compared:
+  name: "[power-automate-desktop-framework](https://github.com/AgniusBartninkas/power-automate-desktop-framework)"
+  intro: "The reference was built for PAD 2.57, before desktop flow templates existed. What the template changes, topic by topic, the three choices above first:"
+  rows:
+    - ["Contracts", "About 90 global variables shared by 29 global subflows", "11 local functions with declared inputs and outputs (68 in all); only `Main` and `Tests` are global"]
+    - ["Reading the canvas", "Regions without colours", "Numbered regions, one colour per role; collapsed, `Main` reads in 13 lines"]
+    - ["Explaining the flow", "Comments", "A note on every action, condition, loop and region (525), plus comments for the reader"]
+    - ["Distribution", "A flow to copy, or a solution to import", "A desktop flow template: *New › Flow from template*"]
+    - ["Dependencies", "8 utility desktop flows called with *Run desktop flow*, their ids replaced before the first run", "None: every utility is a local function inside the template"]
+    - ["Outcome of an item", "One error message", "`SUCCESS`, `BUSINESS_EXCEPTION` (never retried) or `SYSTEM_EXCEPTION` (retried after a recovery)"]
+    - ["Resilience", "Retries counted in the work item database", "Retries per item with a screenshot, the applications closed and a pause; a circuit breaker after a number of system exceptions in a row; `in_glob_num_MaxItems` for a short run"]
+    - ["Log", "One child desktop flow run per log line", "One file write per line, filtered by level; WARN and above also in the run log of Power Automate"]
+    - ["Settings", "JSON, Excel, database, SharePoint or Dataverse read by a child flow, each key read without a default", "`Config.csv` editable in Excel: defaults in the flow, rows per environment, numbers checked, the file created when missing"]
+    - ["Result of the run", "`Output_IsSuccess` and `ErrorMessage`", "The same, plus a JSON summary checked by reading it back, a CSV and HTML report and a screenshot per failed attempt"]
+    - ["Name of the current step", "An action that fails on purpose in each subflow, to read its name in the error", "The step name is given to the log; nothing fails on purpose"]
+    - ["Tests", "None", "`Tests`: 24 cases, one per function and per recovery path"]
+  kept: "the split between reading the work items and processing one item, the recovery of the applications before a retry, the error report sent to a person, one folder layout per project."
+
+performance:
+  - "Tested run of 2026-10-19 in the designer (PAD 2.73.155): `Main` on the 6 demo items ended COMPLETED in 148 s - 2 successes, 3 business exceptions, 1 system exception after 3 attempts."
+  - "About 3 to 5 s per item in the designer: one call of `Process_Item` and one to three lines of log. The item in system exception took 30 s: three attempts, each with a screenshot, the recovery and a pause of 2 s."
+  - "`Tests`: 24 cases in 151 s (2026-10-19)."
+  - "Every time was measured in the designer, which draws each action on screen. A run from the console or from a cloud flow was not measured."
+
+limits:
+  - "Templates need PAD 2.72 or later; tested on 2.73.155. Only *My templates* was tested: sharing the template with other makers was not."
+  - "A flow made from the template is a copy: it does not follow later changes of the template."
+  - "An application instance (Excel, a browser, Outlook) cannot cross the boundary of a local function: open, use and close it in the function that does the work, as `Get_Work_Items` of the example does with Excel and `Send_Notification` with Outlook."
+  - "`ProcessesToClose` closes every process of that name, windows of the user included. On a PC that is also used by a person, list only what the robot opens."
+  - "Not proven by `Tests`: an Outlook message drafted or sent by `Send_Notification` (the channel is `NONE` in the demo; the example below drafted reminders and its run report), a retry that succeeds after a passing failure, a FATAL run, a run from the console or from a cloud flow."
+  - "The work items are read once per run from one list. Power Automate work queues are not used; replacing the loop of `Main` by a work queue was not tested."
+  - "The notes show in the dialog of each action, not on the canvas."
+  - "`out_glob_txt_ErrorMessage` can carry data of an item: mark it as sensitive when the items hold personal data."
+
+pictures:
+  result: {file: assets/result.png, caption: "The run report of Main on the 6 demo items: 2 successes, 3 business exceptions, 1 system exception after 3 attempts"}
+  features:
+    - {file: assets/variables-pane.png, caption: "Local functions: Process_Item receives 3 inputs and returns 4 outputs (Variables pane, section Local, values of the last item)", width: 300}
+    - {file: assets/canvas-main.png, caption: "Coloured regions: Main collapsed, the whole run in 5 numbered regions"}
+    - {file: assets/action-note.png, caption: "A note on every action: double-click an action, its note is at the top of the dialog", width: 480}
+  to_change:
+    - {file: assets/canvas-process-item.png, caption: "Process_Item: marker 1 on region 2.1 (business rules), marker 2 on region 2.2 (application steps)"}
+    - {file: assets/canvas-get-work-items.png, caption: "Get_Work_Items: markers on regions 1 (columns), 2 (demo part) and 3 (the source)"}
+    - {file: assets/canvas-load-config.png, caption: "Load_Config: the marker shows region 2, the defaults of the settings"}
+  variables_pane: {file: assets/variables-pane.png, caption: "Process_Item, Variables pane, section Local: Input 3, Output 4"}
+
+apps: []
+
+flow_name: PAD_REF
+
+subflows:                   # one line per file of flow/
+  1-Main.txt: {does: "The run: minimal state, guarded run (init, work items, one transaction per item with retries), run status, end (report, summary, notification), clean-up and outputs."}
+  2-Tests.txt: {does: "24 cases: each function and each recovery path called with fixed inputs, one PASS or FAIL line per case in a report. Run it with Run from here on its first action.", optional: true}
+  3-Verify.txt: {does: "Writes one PASS or FAIL line of Tests to the report.", optional: true}
+  4-Init_Run.txt: {does: "Creates the project folders (missing parents included) and builds the run id and the name of the daily log file."}
+  5-Write_Log.txt: {does: "One line per event, filtered by level; WARN and above also go to the run log of Power Automate."}
+  6-Load_Config.txt: {does: "Defaults, then the rows of Config.csv for every environment, then the rows of the current environment; numbers checked; returned as JSON."}
+  7-Get_Work_Items.txt: {does: "Reads every work item once, as a table (one row = one transaction); writes the demo file when asked."}
+  8-Process_Item.txt: {does: "One transaction: the business rules, the application steps and the outcome of the item."}
+  9-Take_Evidence.txt: {does: "A screenshot named after the run, the item and the attempt."}
+  10-Close_Applications.txt: {does: "Closes the running processes of a list: at start, before a retry and at the end."}
+  11-Write_Run_Report.txt: {does: "The result of every item as a CSV file and as an HTML page."}
+  12-Send_Notification.txt: {does: "The HTML report by Outlook, as a draft or sent; NONE turns it off."}
+  13-To_Json_Text.txt: {does: "Escapes a text for a JSON value."}
+
+variables:                  # every input and output: what it holds and a real example of the sample data
+  in_loc_txt_Case: {holds: Name of a test case, e.g: "Init_Run - nested project folder created, run id and log file set"}
+  in_loc_bool_Ok: {holds: The verdict of the case computed by Tests, e.g: 'True'}
+  in_loc_txt_Detail: {holds: "The values observed, written after a FAIL", e.g: 'Ok=True Count=6'}
+  in_loc_txt_ReportIn: {holds: The report so far, e.g: 'PASS - Init_Run - ...'}
+  in_loc_txt_ReportFile: {holds: Full path of the report file of Tests, e.g: 'C:\Temp\tests-PAD_REF-20261019-001545.txt'}
+  out_loc_txt_Report: {holds: The report with the new line, e.g: 'PASS - Init_Run - ...'}
+  in_loc_txt_ProjectFolder: {holds: "Root folder of the process; its six sub-folders are created when missing", e.g: 'C:\RPA\PAD_REF'}
+  in_loc_txt_ProcessName: {holds: Name of the process in the log file name, e.g: PAD_REF}
+  out_loc_txt_RunId: {holds: "Run id: time stamp and machine name", e.g: 20261019-001842-HA}
+  out_loc_txt_LogFile: {holds: "Log file of the day and of the process", e.g: 'C:\RPA\PAD_REF\Logs\2026-10-19_PAD_REF.log'}
+  out_loc_txt_ConfigFile: {holds: Full path of Config.csv, e.g: 'C:\RPA\PAD_REF\Config\Config.csv'}
+  out_loc_txt_InputFolder: {holds: Folder of the work items files, e.g: 'C:\RPA\PAD_REF\Input'}
+  out_loc_txt_OutputFolder: {holds: Folder of what the process produces, e.g: 'C:\RPA\PAD_REF\Output'}
+  out_loc_txt_EvidenceFolder: {holds: Folder of the screenshots, e.g: 'C:\RPA\PAD_REF\Evidence'}
+  out_loc_txt_ReportsFolder: {holds: Folder of the run reports, e.g: 'C:\RPA\PAD_REF\Reports'}
+  out_loc_bool_Ok: {holds: "True when the function did its work; False with a detail otherwise (several functions)", e.g: 'True'}
+  in_loc_txt_LogFile: {holds: Full path of the log file, e.g: 'C:\RPA\PAD_REF\Logs\2026-10-19_PAD_REF.log'}
+  in_loc_txt_RunId: {holds: Run id of the current run, e.g: 20261019-001842-HA}
+  in_loc_txt_MinLevel: {holds: "Lowest level written: DEBUG, INFO, WARN, ERROR or FATAL", e.g: INFO}
+  in_loc_txt_Level: {holds: Level of this line, e.g: INFO}
+  in_loc_txt_Step: {holds: Step of the run that writes the line, e.g: Process}
+  in_loc_txt_Message: {holds: Text of the line, e.g: "Item INV-001 : SUCCESS in 1 attempt(s), 4600 ms"}
+  out_loc_txt_Status: {holds: "WRITTEN, FILTERED (below the level) or FAILED", e.g: WRITTEN}
+  in_loc_txt_ConfigFile: {holds: Full path of Config.csv, e.g: 'C:\RPA\PAD_REF\Config\Config.csv'}
+  in_loc_txt_Environment: {holds: "Environment whose rows win: DEV, TEST, PROD or any name", e.g: DEV}
+  out_loc_txt_ConfigJson: {holds: The effective settings as JSON text, e.g: '{"MaxRetryNumber":"2", ...}'}
+  out_loc_num_SettingsRead: {holds: Rows of Config.csv applied, e.g: '11'}
+  out_loc_txt_Detail: {holds: "Why the function failed, or what it did (several functions)", e.g: 'Demo input file created (CreateDemoInput = True).'}
+  in_loc_txt_InputFile: {holds: Full path of the work items file, e.g: 'C:\RPA\PAD_REF\Input\work-items.csv'}
+  in_loc_bool_CreateDemo: {holds: "True writes the demo file when the input file is missing", e.g: 'True'}
+  out_loc_tbl_Items: {holds: "The work items, one row each", e.g: "6 rows: Reference, Customer, Amount, Email"}
+  out_loc_num_Count: {holds: Number of work items read, e.g: '6'}
+  in_loc_row_Item: {holds: The work item of this transaction, e.g: "INV-001, Contoso, 1250, ap@contoso.com"}
+  in_loc_txt_OutputFolder: {holds: Folder where the transaction writes, e.g: 'C:\RPA\PAD_REF\Output'}
+  in_loc_num_Attempt: {holds: "Attempt number, 1 for the first", e.g: '1'}
+  out_loc_txt_ItemKey: {holds: Key of the item in the log and the report, e.g: INV-001}
+  out_loc_txt_Outcome: {holds: "SUCCESS, BUSINESS_EXCEPTION or SYSTEM_EXCEPTION", e.g: SUCCESS}
+  out_loc_txt_Reason: {holds: "Why the item is in exception, on one line; empty for a success", e.g: 'Amount must be positive: -10'}
+  out_loc_txt_Result: {holds: "What the transaction produced (a file, a draft)", e.g: 'C:\RPA\PAD_REF\Output\receipt-INV-001.txt'}
+  in_loc_txt_EvidenceFolder: {holds: Folder of the screenshots, e.g: 'C:\RPA\PAD_REF\Evidence'}
+  in_loc_txt_ItemKey: {holds: Key of the item; characters Windows refuses become _, e.g: 'INV:005'}
+  out_loc_txt_File: {holds: Full path of the screenshot, e.g: 'C:\RPA\PAD_REF\Evidence\20261019-001842-HA_INV_005_attempt1.png'}
+  in_loc_txt_ProcessNames: {holds: "Process names to close, comma separated; empty = none", e.g: 'EXCEL,msedge'}
+  out_loc_num_Closed: {holds: Number of processes closed, e.g: '0'}
+  in_loc_tbl_Results: {holds: "One row per item: run id, key, outcome, attempts, reason, result, start, duration", e.g: 6 rows}
+  in_loc_txt_ReportsFolder: {holds: Folder of the run reports, e.g: 'C:\RPA\PAD_REF\Reports'}
+  in_loc_txt_Title: {holds: Title of the HTML page, e.g: PAD_REF - DEV - COMPLETED}
+  out_loc_txt_CsvFile: {holds: Full path of the CSV report, e.g: 'C:\RPA\PAD_REF\Reports\run-20261019-001842-HA.csv'}
+  out_loc_txt_HtmlFile: {holds: Full path of the HTML report, e.g: 'C:\RPA\PAD_REF\Reports\run-20261019-001842-HA.html'}
+  out_loc_txt_Html: {holds: "The HTML page, also the body of the notification", e.g: '<html><body ...'}
+  in_loc_txt_Channel: {holds: "NONE, OUTLOOK_DRAFT or OUTLOOK_SEND", e.g: NONE}
+  in_loc_txt_To: {holds: Recipients of the report, e.g: 'accounting@example.com'}
+  in_loc_txt_Account: {holds: The Outlook account that writes the message, e.g: 'robot@example.com'}
+  in_loc_txt_Subject: {holds: Subject of the message, e.g: '[COMPLETED] PAD_REF DEV : 2 success, 3 business, 1 system'}
+  in_loc_txt_HtmlBody: {holds: Body of the message, e.g: '<html><body ...'}
+  out_loc_bool_Sent: {holds: True when Outlook accepted the message, e.g: 'False'}
+  in_loc_txt_Text: {holds: Any text, e.g: 'C:\RPA\PAD_REF\Reports\run-20261019-001842-HA.csv'}
+  out_loc_txt_Json: {holds: "The text escaped for a JSON value", e.g: 'C:\\RPA\\PAD_REF\\Reports\\run-20261019-001842-HA.csv'}
+  in_glob_num_MaxItems: {holds: "0 = every item; n = stop after n items (a short run)", e.g: '0', default: '0'}
+  in_glob_txt_Environment: {holds: "Selects the rows of Config.csv: DEV, TEST, PROD or any name", e.g: DEV, default: DEV}
+  in_glob_txt_LogLevel: {holds: "Lowest level written to the log: DEBUG, INFO, WARN, ERROR or FATAL", e.g: INFO, default: INFO}
+  in_glob_txt_ProcessName: {holds: "Name of the process in the log, the report and the notification", e.g: PAD_REF, default: PAD_REF}
+  in_glob_txt_ProjectFolder: {holds: "Root of the folders Config, Input, Output, Logs, Evidence and Reports, created when missing", e.g: 'C:\RPA\PAD_REF', default: 'C:\RPA\PAD_REF'}
+  out_glob_bool_Success: {holds: "True when the run reached COMPLETED; items in exception do not make it fail", e.g: 'True', default: '(output)'}
+  out_glob_txt_ErrorMessage: {holds: "Why a FATAL or ABORTED run stopped, on one line; empty after a COMPLETED run", e.g: 'Input file not found: C:\RPA\PAD_REF\Input\work-items.csv', default: '(output)'}
+  out_glob_txt_RunSummary: {holds: "JSON: run id, process, environment, status, counts, retries, duration, report, error", e.g: '{"runId": "20261019-001842-HA", "status": "COMPLETED", "itemsRead": 6, ...}', default: '(output)'}
+
+example:
+  title: "Example: invoice reminders made from the template"
+  need: |
+    The accounting team keeps a workbook of unpaid invoices (columns Invoice, Customer, Amount, Email, Status). Every
+    morning, each invoice marked *To remind* must get a payment reminder, saved as an Outlook draft that a person reads
+    before it leaves. A paid invoice, an amount that is not a number or a wrong e-mail address must be listed in the
+    report, never reminded. The flow `Invoice_Reminders` was made with *New › Flow from template*; these are the only
+    places that changed:
+  changes:
+    - {subflow: Get_Work_Items, region: "1", change: "The columns of the table: Invoice, Customer, Amount, Email, Status."}
+    - {subflow: Get_Work_Items, region: "2", change: "The demo part removed: a missing workbook is an error."}
+    - {subflow: Get_Work_Items, region: "3", change: "The workbook read in one action: *Launch Excel* hidden and read only, *Read from Excel worksheet*, *Close Excel*, all inside the function."}
+    - {subflow: Process_Item, region: "1", change: "The key of the item read from the column Invoice."}
+    - {subflow: Process_Item, region: "2.1", change: "A first rule: only the status To remind. The rules on the amount and the e-mail are kept."}
+    - {subflow: Process_Item, region: "2.2", change: "The demo receipt replaced by *Launch Outlook* and *Send email message through Outlook* with *Save as draft*; a new input `in_loc_txt_Account` for the Outlook account."}
+    - {subflow: Main, region: "2.3.1", change: "The CALL of `Process_Item` gives the new input, from the setting `NotifyAccount`."}
+    - {subflow: Tests, region: "1, 5 and 6", change: "Five test invoices, a test workbook written then read, one case per rule."}
+    - {subflow: Config.csv, region: "-", change: "`InputFile` = the workbook, `CreateDemoInput` = False, `ProcessesToClose` = EXCEL, `NotifyChannel` = OUTLOOK_DRAFT (OUTLOOK_SEND on a PROD row), `NotifyTo` and `NotifyAccount`."}
+  pictures:
+    - {file: assets/example-get-work-items.png, caption: "Get_Work_Items of the example: region 3 reads the workbook with Excel and closes it"}
+    - {file: assets/example-rules.png, caption: "Process_Item of the example, region 2.1: the new rule on the status comes first"}
+    - {file: assets/example-outlook.png, caption: "Process_Item of the example, region 2.2: the reminder saved as an Outlook draft"}
+  result:
+    - "`Tests` of the example: 24 PASS, 0 FAIL (2026-10-18, 202 s for the last run)."
+    - "`Main` on a workbook of 5 invoices: COMPLETED, 2 reminders saved as Outlook drafts, 3 business exceptions (one paid, one amount `abc`, one address `no-email`), the run report saved as a draft too. Nothing was sent."
+    - "About 5.5 s per reminder in the designer, Outlook included (2026-10-18)."
+  result_picture: {file: assets/example-result.png, caption: "The run report of the example: 2 reminders, 3 invoices listed with the reason"}
+  benefits:
+    - "Only the business part was written: the regions in the table. The settings, the retries, the screenshots, the log, the run report and the notification came from the template, unchanged."
+    - "The same folders, log and report as every other process made from the template: the support team reads them all the same way."
+    - "A person reads each reminder before it leaves: the robot prepares, the accountant decides."
+    - "Each rule is tested before a run: five test invoices, one case per rule."
+
+run:
+  subflow: Main
+  expect:
+    - "After about 2 min 30 s in the designer, the run ends without error. `C:\\RPA\\PAD_REF` holds the folders Config, Input, Output, Logs, Evidence and Reports, created by the run, with `Config\\Config.csv` written with the defaults and `Input\\work-items.csv` with the 6 demo items."
+    - "`Reports\\run-<run id>.csv` and `.html`: 2 SUCCESS, 3 BUSINESS_EXCEPTION, 1 SYSTEM_EXCEPTION after 3 attempts (`INV:005`, a file name Windows refuses), as `expected/run-report.csv`."
+    - "`Evidence`: 3 screenshots of `INV:005`, one per attempt. `Output`: 2 receipts. `Logs`: one line per event, the last one says the run ended COMPLETED."
+    - "The outputs of the flow, in the Variables pane: `out_glob_bool_Success` True, `out_glob_txt_ErrorMessage` empty, `out_glob_txt_RunSummary` the JSON summary of the run."
+    - "Optional, tab `Tests`: right-click its first action, **Run from here**. After about 2 min 30 s, `C:\\Temp\\tests-PAD_REF-<date>-<time>.txt` ends with `TOTAL : 24 PASS, 0 FAIL`, as `expected/tests-report.txt`. The cases work under `C:\\Temp\\PAD_REF_Tests`: nothing of a real project is touched."
+
+troubleshooting:
+  - when: "Run from here is greyed out in Tests"
+    do: "Right-click the first action of the subflow, at the very top of the canvas: the menu item is greyed out on an action inside a region."
+  - when: "Errors pane: Missing argument(s) on a Run subflow action, after an input was added to a function"
+    do: "Every CALL gives every input of the function: add the new input to the CALL in `Main` (region 2.3.1 for `Process_Item`) and in `Tests`."
+  - when: "In a flow made from the template, only the tab Main is open"
+    do: "The other subflows are there: open the **Subflows** list above the canvas and double-click one to open its tab."
+  - when: "The run is FATAL with 'Input file not found'"
+    do: "Put the file named by `InputFile` in the folder Input, or set `CreateDemoInput` to True in `Config.csv` for the demo."
+
+tested:                     # one line per REAL run in PAD: version from the run's own record (collage.log, NOTE.md)
+  - {pad: 2.73.155, date: 2026-10-18, path: "Rebuild, Save as Template, Publish, then New › Flow from template", result: pass}
+  - {pad: 2.73.155, date: 2026-10-18, path: "A process from the template: the invoice reminders example", result: pass}
+  - {pad: 2.73.155, date: 2026-10-19, path: "Full flow: Tests 24 / 24, then Main", result: pass}

@@ -1,0 +1,94 @@
+# local subflow: Init_Run
+# inputs: in_loc_txt_ProjectFolder, in_loc_txt_ProcessName
+# outputs: out_loc_txt_RunId, out_loc_txt_LogFile, out_loc_txt_ConfigFile, out_loc_txt_InputFolder, out_loc_txt_OutputFolder, out_loc_txt_EvidenceFolder, out_loc_txt_ReportsFolder, out_loc_bool_Ok
+# Init_Run: creates the project folders (an existing folder is kept), builds the run id (stamp + machine) and the daily log file name. Never throws.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Every output is set before the first action that can fail : the caller always receives defined values.'
+**REGION 1. Outputs : initialised before the first action that can fail
+@@CustomNote: 'Optimistic flag, set to False by any failure below.'
+SET out_loc_bool_Ok TO True
+@@CustomNote: 'Empty until the run id is built in region 3.'
+SET out_loc_txt_RunId TO $''''''
+@@CustomNote: 'Empty until the log file name is built in region 3.'
+SET out_loc_txt_LogFile TO $''''''
+@@CustomNote: 'The folder layout is fixed : every process built from the template looks the same on disk.'
+SET out_loc_txt_ConfigFile TO $'''%in_loc_txt_ProjectFolder%\\Config\\Config.csv'''
+@@CustomNote: 'Input : where the work items arrive.'
+SET out_loc_txt_InputFolder TO $'''%in_loc_txt_ProjectFolder%\\Input'''
+@@CustomNote: 'Output : what the process produces (files, receipts).'
+SET out_loc_txt_OutputFolder TO $'''%in_loc_txt_ProjectFolder%\\Output'''
+@@CustomNote: 'Evidence : screenshots taken on system exceptions.'
+SET out_loc_txt_EvidenceFolder TO $'''%in_loc_txt_ProjectFolder%\\Evidence'''
+@@CustomNote: 'Reports : the CSV and HTML report of each run.'
+SET out_loc_txt_ReportsFolder TO $'''%in_loc_txt_ProjectFolder%\\Reports'''
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Guard : without a project folder nothing can be created safely.'
+**REGION 2. Guard : a project folder is required
+@@CustomNote: 'An empty path would create folders at the root of the current drive.'
+IF in_loc_txt_ProjectFolder = $'''''' THEN
+    @@CustomNote: 'Refused : the caller turns this into a FATAL run with a clear message.'
+    SET out_loc_bool_Ok TO False
+    @@CustomNote: 'Leaves the function with the outputs already set.'
+    EXIT FUNCTION
+END
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Run id and log file : names that a person and a script can both read.'
+**REGION 3. Run id and log file : one id per run, one log file per day and per process
+@@CustomNote: 'One clock reading for the whole id : stamp and day cannot disagree.'
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> date_Now
+@@CustomNote: 'Sortable stamp, first part of the run id.'
+Text.ConvertDateTimeToText.FromCustomDateTime DateTime: date_Now CustomFormat: $'''yyyyMMdd-HHmmss''' Result=> txt_Stamp
+@@CustomNote: 'Day of the log file : one file per day and per process.'
+Text.ConvertDateTimeToText.FromCustomDateTime DateTime: date_Now CustomFormat: $'''yyyy-MM-dd''' Result=> txt_Day
+@@CustomNote: 'Fallback when the machine name cannot be read.'
+SET txt_Machine TO $'''PC'''
+@@CustomNote: 'The machine name in the run id tells on which robot machine a run happened.'
+System.GetEnvironmentVariable.GetEnvironmentVariable Name: $'''COMPUTERNAME''' Value=> txt_Machine
+ON ERROR
+    SET txt_Machine TO $'''PC'''
+END
+@@CustomNote: 'Run id = time + machine : unique for a robot that never runs twice in the same second.'
+SET out_loc_txt_RunId TO $'''%txt_Stamp%-%txt_Machine%'''
+@@CustomNote: 'One log file per day and per process, under Logs.'
+SET out_loc_txt_LogFile TO $'''%in_loc_txt_ProjectFolder%\\Logs\\%txt_Day%_%in_loc_txt_ProcessName%.log'''
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'Folders : created when missing, existing ones are kept, so Init_Run can run before every run.'
+**REGION 4. Folders : the project folder and its missing parents, then the 6 sub-folders - an existing folder is kept
+# Folder.Create needs an existing parent : every missing level of a drive path is created from the drive down (a share path must exist)
+@@CustomNote: 'The path is split on backslashes to create each missing level from the drive down.'
+Text.SplitText.SplitWithDelimiter Text: in_loc_txt_ProjectFolder CustomDelimiter: $'''\\''' IsRegEx: False Result=> lst_Levels
+@@CustomNote: 'A share path (\\\\server\\share) starts with an empty level : its root must already exist.'
+IF lst_Levels[0] <> $'''''' THEN
+    @@CustomNote: 'Starts from the drive (C:).'
+    SET txt_Parent TO lst_Levels[0]
+    @@CustomNote: 'One pass per level below the drive.'
+    LOOP num_Level FROM 1 TO lst_Levels.Count - 1 STEP 1
+        @@CustomNote: 'The folder level handled in this pass.'
+        SET txt_Level TO lst_Levels[num_Level]
+        @@CustomNote: 'A trailing backslash gives an empty level : skipped.'
+        IF txt_Level <> $'''''' THEN
+            @@CustomNote: 'Only a missing level is created.'
+            IF (Folder.IfFolderExists.DoesNotExist Path: $'''%txt_Parent%\\%txt_Level%''') THEN
+                @@CustomNote: 'Folder.Create needs an existing parent (measured on PAD 2.73) : this is why the levels are created one by one.'
+                Folder.Create FolderPath: $'''%txt_Parent%\\''' FolderName: txt_Level Folder=> _fold_Level
+                ON ERROR
+                    SET out_loc_bool_Ok TO False
+                END
+            END
+            @@CustomNote: 'The next level is created under this one.'
+            SET txt_Parent TO $'''%txt_Parent%\\%txt_Level%'''
+        END
+    END
+END
+@@CustomNote: 'The six sub-folders every process of the framework uses.'
+LOOP FOREACH txt_SubFolder IN ['Config', 'Input', 'Output', 'Logs', 'Evidence', 'Reports']
+    @@CustomNote: 'Creating a folder that exists is harmless ; a failure sets Ok to False without stopping the robot.'
+    Folder.Create FolderPath: in_loc_txt_ProjectFolder FolderName: txt_SubFolder Folder=> _fold_Created
+    ON ERROR
+        SET out_loc_bool_Ok TO False
+    END
+END
+**ENDREGION

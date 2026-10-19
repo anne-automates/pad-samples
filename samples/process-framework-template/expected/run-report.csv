@@ -1,0 +1,7 @@
+﻿RunId;ItemKey;Outcome;Attempts;Reason;Result;StartedAt;DurationMs
+20261019-001842-HA;INV-001;SUCCESS;1;;C:\RPA\PAD_REF\Output\receipt-INV-001.txt;2026-10-19 00:19:18;4600
+20261019-001842-HA;INV-002;BUSINESS_EXCEPTION;1;Amount must be positive: -10;;2026-10-19 00:19:28;3555
+20261019-001842-HA;INV-003;BUSINESS_EXCEPTION;1;Amount is not a number: abc;;2026-10-19 00:19:37;3220
+20261019-001842-HA;INV-004;BUSINESS_EXCEPTION;1;Email is not valid: no-email;;2026-10-19 00:19:46;3374
+20261019-001842-HA;INV:005;SYSTEM_EXCEPTION;3;Subflow: Process_Item, Action: 35, Action name: Write text to file / Error Message: Failed to write text to file / Additional Info: {};;2026-10-19 00:19:55;30125
+20261019-001842-HA;INV-006;SUCCESS;1;;C:\RPA\PAD_REF\Output\receipt-INV-006.txt;2026-10-19 00:20:30;4255

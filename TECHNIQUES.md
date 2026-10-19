@@ -15,6 +15,7 @@ A local subflow with declared inputs and outputs, called in one CALL line. Copy 
 - [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
 - [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md): Turn any Excel range into an HTML table that keeps its look (fills, fonts, borders, number formats), ready for an Outlook email.
 - [Email triage by a local AI model](samples/local-ai-email-triage/README.md): Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
 
 <a id="errors-as-outputs"></a>
 
@@ -25,6 +26,7 @@ The subflow sets every output first, then reports a failure through a flag and a
 - [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
 - [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md): Turn any Excel range into an HTML table that keeps its look (fills, fonts, borders, number formats), ready for an Outlook email.
 - [Email triage by a local AI model](samples/local-ai-email-triage/README.md): Sort the emails of a shared inbox by category and urgency with a model that runs on the PC, each with a one-sentence summary; no email leaves the PC. Trained on your own sorted emails, it goes from 68 % to 92 % right.
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
 
 <a id="powershell-script"></a>
 
@@ -58,6 +60,7 @@ Inline CSS on every cell (the styling email clients keep), no style block, hidde
 The message is saved as a draft and opened on screen, so a person checks it before it leaves.
 
 - [Excel range to an email-ready HTML table](samples/excel-range-to-html-table/README.md): Turn any Excel range into an HTML table that keeps its look (fills, fonts, borders, number formats), ready for an Outlook email.
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
 
 <a id="local-llm"></a>
 
@@ -99,3 +102,51 @@ A subflow replays the lines of a CSV file through the function and compares each
 One GET per unit of work with Invoke web service, retried when the network stumbles, its failure returned as a flag. The source is open data that allows commercial use and asks for no key, and an empty answer is treated as an error instead of a result.
 
 - [Business days between two dates](samples/business-days-between-two-dates/README.md): Count the business days between two dates, weekends and holidays left out, for France or another country: the public holidays come from an open data API, the days of your company from a file, and one PowerShell action counts.
+
+<a id="desktop-flow-template"></a>
+
+## A desktop flow template to start every process from
+
+The flow is saved with Save as and the type Template, then published; New › Flow from template gives each process its own copy, subflows, variables and notes included. Comments marked TEMPLATE say what a process replaces.
+
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
+
+<a id="coloured-regions"></a>
+
+## Numbered regions, one colour per role
+
+Each subflow is cut into numbered regions coloured by role (cyan state and settings, red guards, green reading, purple processing, blue sub-steps, gold output). Collapsed, the canvas reads in a few lines, and a region number names the place to change.
+
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
+
+<a id="action-notes"></a>
+
+## A note on every action
+
+The note of each action (Add note, at the top of its dialog) says why the action is there - the technical reason, the business rule or what a learner should keep. The notes travel with the pasted code and with the template.
+
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
+
+<a id="transaction-outcomes"></a>
+
+## One outcome per work item, retries only for system exceptions
+
+Each item ends SUCCESS, BUSINESS_EXCEPTION (the data breaks a rule, never retried) or SYSTEM_EXCEPTION (an action failed - screenshot, applications closed, pause, retry). A circuit breaker stops the run after a number of system exceptions in a row.
+
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
+
+<a id="settings-per-environment"></a>
+
+## Settings in a CSV file, overridden per environment
+
+The defaults live in the flow, a CSV file editable in Excel overrides them for every environment, and its rows for the current environment (DEV, TEST, PROD) win. Numbers are checked before use and a missing file is created with the defaults.
+
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.
+
+<a id="test-subflow"></a>
+
+## A Tests subflow that calls every function
+
+A global subflow calls each local function with fixed inputs, its recovery paths included, and writes one PASS or FAIL line per case to a report. Run it before every change.
+
+- [Process framework template](samples/process-framework-template/README.md): A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.

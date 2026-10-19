@@ -67,3 +67,33 @@ open-data-api:
   label: Open data API
   title: A public API chosen for its licence
   summary: One GET per unit of work with Invoke web service, retried when the network stumbles, its failure returned as a flag. The source is open data that allows commercial use and asks for no key, and an empty answer is treated as an error instead of a result.
+
+desktop-flow-template:
+  label: Flow template
+  title: A desktop flow template to start every process from
+  summary: The flow is saved with Save as and the type Template, then published; New › Flow from template gives each process its own copy, subflows, variables and notes included. Comments marked TEMPLATE say what a process replaces.
+
+coloured-regions:
+  label: Coloured regions
+  title: Numbered regions, one colour per role
+  summary: Each subflow is cut into numbered regions coloured by role (cyan state and settings, red guards, green reading, purple processing, blue sub-steps, gold output). Collapsed, the canvas reads in a few lines, and a region number names the place to change.
+
+action-notes:
+  label: Action notes
+  title: A note on every action
+  summary: The note of each action (Add note, at the top of its dialog) says why the action is there - the technical reason, the business rule or what a learner should keep. The notes travel with the pasted code and with the template.
+
+transaction-outcomes:
+  label: Business and system exceptions
+  title: One outcome per work item, retries only for system exceptions
+  summary: Each item ends SUCCESS, BUSINESS_EXCEPTION (the data breaks a rule, never retried) or SYSTEM_EXCEPTION (an action failed - screenshot, applications closed, pause, retry). A circuit breaker stops the run after a number of system exceptions in a row.
+
+settings-per-environment:
+  label: Settings per environment
+  title: Settings in a CSV file, overridden per environment
+  summary: The defaults live in the flow, a CSV file editable in Excel overrides them for every environment, and its rows for the current environment (DEV, TEST, PROD) win. Numbers are checked before use and a missing file is created with the defaults.
+
+test-subflow:
+  label: Tests subflow
+  title: A Tests subflow that calls every function
+  summary: A global subflow calls each local function with fixed inputs, its recovery paths included, and writes one PASS or FAIL line per case to a report. Run it before every change.

@@ -1,0 +1,46 @@
+# local subflow: Close_Applications
+# inputs: in_loc_txt_ProcessNames
+# outputs: out_loc_num_Closed, out_loc_bool_Ok
+# Close_Applications: closes every running process of a comma separated list (EXCEL,msedge) - called at start, before a retry (recovery) and at the end.
+# A process that is not running is not an error. Never throws.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Every output is set before the first action that can fail.'
+**REGION 1. Outputs : initialised before the first action that can fail
+@@CustomNote: 'Number of processes closed, for the log.'
+SET out_loc_num_Closed TO 0
+@@CustomNote: 'Optimistic flag, set to False if a process refuses to close.'
+SET out_loc_bool_Ok TO True
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Guard : no list, nothing to do.'
+**REGION 2. Guard : an empty list closes nothing
+@@CustomNote: 'ProcessesToClose is empty in the template : each process lists the applications it opens.'
+IF in_loc_txt_ProcessNames = $'''''' THEN
+    @@CustomNote: 'Leaves with 0 closed and Ok.'
+    EXIT FUNCTION
+END
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Processing : the same call serves at start (clean desktop), before each retry (recovery) and at the end.'
+**REGION 3. Processing : one name after the other, only when the process is running
+@@CustomNote: 'The list comes from Config.csv, comma separated (EXCEL,msedge).'
+Text.SplitText.SplitWithDelimiter Text: in_loc_txt_ProcessNames CustomDelimiter: $''',''' IsRegEx: False Result=> lst_Names
+@@CustomNote: 'One pass per process name.'
+LOOP FOREACH txt_Name IN lst_Names
+    @@CustomNote: 'Spaces around the commas are tolerated.'
+    Text.Trim Text: txt_Name TrimOption: Text.TrimOption.Both TrimmedText=> txt_Process
+    @@CustomNote: 'An empty name (double comma) is skipped.'
+    IF txt_Process <> $'''''' THEN
+        @@CustomNote: 'Only a running process is closed : a closed application is not an error.'
+        IF (System.IfProcess.ProcessIsRunning ProcessName: txt_Process) THEN
+            @@CustomNote: 'Closes every process of that name : save your own work before a robot runs on your session.'
+            System.TerminateProcess.TerminateProcessByName ProcessName: txt_Process
+            ON ERROR
+                SET out_loc_bool_Ok TO False
+            END
+            @@CustomNote: 'Counted for the log.'
+            SET out_loc_num_Closed TO out_loc_num_Closed + 1
+        END
+    END
+END
+**ENDREGION

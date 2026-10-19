@@ -146,6 +146,56 @@
       "page": "samples/local-ai-email-triage/README.md",
       "image": "samples/local-ai-email-triage/assets/result.png",
       "cover": "samples/local-ai-email-triage/assets/cover.png"
+    },
+    {
+      "id": "process-framework-template",
+      "title": "Process framework template",
+      "summary": "A desktop flow template to start every process from: one transaction per work item, business and system exceptions, retries with recovery, log, run report, settings per environment and 24 tests, in local functions with a note on every action.",
+      "category": "Templates",
+      "kind": "template",
+      "level": "intermediate",
+      "version": "1.0.0",
+      "released": "2026-10-19",
+      "techniques": [
+        "desktop-flow-template",
+        "local-function",
+        "coloured-regions",
+        "action-notes",
+        "transaction-outcomes",
+        "errors-as-outputs",
+        "settings-per-environment",
+        "test-subflow",
+        "outlook-draft"
+      ],
+      "requires": [],
+      "quick_try_minutes": null,
+      "setup_minutes": 90,
+      "subflows": 10,
+      "inputs": 35,
+      "outputs": 35,
+      "ui_elements": 0,
+      "tested": [
+        {
+          "pad": "2.73.155",
+          "date": "2026-10-18",
+          "path": "Rebuild, Save as Template, Publish, then New › Flow from template",
+          "result": "pass"
+        },
+        {
+          "pad": "2.73.155",
+          "date": "2026-10-18",
+          "path": "A process from the template: the invoice reminders example",
+          "result": "pass"
+        },
+        {
+          "pad": "2.73.155",
+          "date": "2026-10-19",
+          "path": "Full flow: Tests 24 / 24, then Main",
+          "result": "pass"
+        }
+      ],
+      "page": "samples/process-framework-template/README.md",
+      "image": "samples/process-framework-template/assets/result.png"
     }
   ]
 }

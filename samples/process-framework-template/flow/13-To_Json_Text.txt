@@ -1,0 +1,14 @@
+# local subflow: To_Json_Text
+# inputs: in_loc_txt_Text
+# outputs: out_loc_txt_Json
+# To_Json_Text: escapes a text for a JSON string value (backslash, double quote, line breaks and tabs), so the run summary stays valid JSON.
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'The order matters : backslashes first, otherwise the backslashes added for the quotes would be doubled.'
+**REGION 1. Processing : backslash first, then the double quote, then the control characters
+@@CustomNote: 'A Windows path is full of backslashes : each one is doubled for JSON.'
+Text.Replace.ReplaceText Text: in_loc_txt_Text TextToFind: $'''\\''' IgnoreCase: False ReplaceWith: $'''\\\\''' ActivateEscapeSequences: False ComparisonType: Text.TextComparisonType.Ordinal Result=> txt_Escaped
+@@CustomNote: 'A double quote would end the JSON value : it is escaped.'
+Text.Replace.ReplaceText Text: txt_Escaped TextToFind: $'''\"''' IgnoreCase: False ReplaceWith: $'''\\\"''' ActivateEscapeSequences: False ComparisonType: Text.TextComparisonType.Ordinal Result=> txt_Escaped
+@@CustomNote: 'Line breaks and tabs become spaces : the summary stays on one line and valid.'
+Text.Replace.ReplaceTextWithRegex Text: txt_Escaped TextToFind: $'''[\\r\\n\\t]+''' IgnoreCase: False ReplaceWith: $''' ''' ActivateEscapeSequences: False Result=> out_loc_txt_Json
+**ENDREGION

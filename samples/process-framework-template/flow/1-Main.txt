@@ -1,0 +1,358 @@
+# ===== Main (global): PAD_REF - transaction framework : Init > Get work items > Process each item (retry, business / system exceptions) > End =====
+# Main never stops on an unexpected error : the run is marked FATAL, the report and the outputs are still written.
+# TEMPLATE: keep Main as it is ; adapt Process_Item (business steps), Get_Work_Items (source) and the defaults of Load_Config (settings). A new input of Process_Item is also given by its CALL, in region 2.3.1.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Everything the end of Main reads is defined here first : even a run that crashes in the first second can still write its report and outputs.'
+**REGION 1. Minimal state : outputs, counters and safe defaults the end of the run must find defined
+@@CustomNote: 'Pessimistic by default : Success becomes True only in region 5, when the run really reached COMPLETED.'
+SET out_glob_bool_Success TO False
+@@CustomNote: 'Empty until a FATAL or ABORTED run : the cloud flow shows this text to explain why the run stopped.'
+SET out_glob_txt_ErrorMessage TO $''''''
+@@CustomNote: 'Filled in region 4 with the JSON summary ; empty here so a crash before that point returns an empty, not a stale, summary.'
+SET out_glob_txt_RunSummary TO $''''''
+@@CustomNote: 'State machine of the run : RUNNING, then COMPLETED, ABORTED (circuit breaker) or FATAL (unexpected error).'
+SET txt_RunStatus TO $'''RUNNING'''
+@@CustomNote: 'Reason of a stop, in plain words ; it ends up in ErrorMessage and in the FATAL log line.'
+SET txt_FatalReason TO $''''''
+@@CustomNote: 'Set by Init_Run ; every log line, report and screenshot carries it so one run can be traced end to end.'
+SET txt_RunId TO $''''''
+@@CustomNote: 'Empty until Init_Run builds the path : Write_Log then simply reports FAILED instead of crashing.'
+SET txt_LogFile TO $''''''
+@@CustomNote: 'Empty until Init_Run : Write_Run_Report refuses an empty folder instead of writing to the root of the disk.'
+SET txt_ReportsFolder TO $''''''
+@@CustomNote: 'Path of the CSV report, quoted in the summary JSON and in the last log line.'
+SET txt_ReportCsv TO $''''''
+@@CustomNote: 'HTML body of the report, reused as the body of the notification e-mail.'
+SET txt_ReportHtmlBody TO $''''''
+@@CustomNote: 'Duration of the run in seconds, as text without decimals so the JSON summary stays valid in every Windows locale.'
+SET txt_RunSeconds TO $'''0'''
+@@CustomNote: 'Reserved for an error inside the end of the run itself (region 4) ; it never stops the clean-up.'
+SET txt_FinishError TO $''''''
+@@CustomNote: 'No application is closed until Config.csv says which ones : a safe default for the first seconds of the run.'
+SET txt_ProcessesToClose TO $''''''
+@@CustomNote: 'NONE until the configuration is read : no e-mail can leave by accident before the settings are known.'
+SET txt_NotifyChannel TO $'''NONE'''
+@@CustomNote: 'Recipients of the run report, read from Config.csv (NotifyTo).'
+SET txt_NotifyTo TO $''''''
+@@CustomNote: 'Outlook account that sends the report, read from Config.csv (NotifyAccount).'
+SET txt_NotifyAccount TO $''''''
+@@CustomNote: 'By default only runs that need attention are notified ; a quiet inbox makes real alerts visible.'
+SET bool_NotifyOnSuccess TO False
+@@CustomNote: 'Number of items returned by Get_Work_Items : the denominator of every count in the report.'
+SET num_ItemsRead TO 0
+@@CustomNote: 'Items actually processed : lower than ItemsRead when MaxItems or the circuit breaker stopped the loop.'
+SET num_ItemsHandled TO 0
+@@CustomNote: 'Business view : transactions done.'
+SET num_Success TO 0
+@@CustomNote: 'Business view : items rejected because of their data ; the business team corrects them.'
+SET num_BusinessExceptions TO 0
+@@CustomNote: 'Support view : items that failed for a technical reason even after the retries.'
+SET num_SystemExceptions TO 0
+@@CustomNote: 'Retries after a system exception : a high number reveals an unstable application before it becomes an incident.'
+SET num_Retries TO 0
+@@CustomNote: 'Circuit breaker counter : reset by every SUCCESS or BUSINESS_EXCEPTION, compared to MaxConsecutiveSystemExceptions.'
+SET num_ConsecutiveSystemExceptions TO 0
+@@CustomNote: 'Upper case so dev, Dev and DEV select the same rows of Config.csv.'
+Text.ChangeCase Text: in_glob_txt_Environment NewCase: Text.CaseOption.UpperCase Result=> txt_Environment
+@@CustomNote: 'Start time of the run, used for the duration in the summary and in the last log line.'
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> date_RunStart
+@@CustomNote: 'One row per item, filled by region 2.3.2 : this table becomes the CSV and HTML report of the run.'
+Variables.CreateNewDatatable InputTable: { ^['RunId', 'ItemKey', 'Outcome', 'Attempts', 'Reason', 'Result', 'StartedAt', 'DurationMs'] } DataTable=> tbl_Results
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Everything that can fail sits inside BLOCK Run : an unexpected error jumps to region 3 instead of stopping the robot.'
+**REGION 2. Guarded run : an unexpected error marks the run FATAL and goes on to the end of Main
+@@CustomNote: 'Guarded zone : its handler only sets the status to FATAL, so the end of Main (report, outputs, clean-up) always runs.'
+BLOCK Run
+ON BLOCK ERROR
+    SET txt_RunStatus TO $'''FATAL'''
+END
+    @@regionColor: '#C6E0B4'
+    @@CustomNote: 'Init : prepare the ground before touching any work item.'
+    **REGION 2.1 Init : folders, run id, log file, configuration, applications closed
+    @@CustomNote: 'Creates the project folders when missing and gives the run its id and its daily log file.'
+    CALL Init_Run in_loc_txt_ProjectFolder: in_glob_txt_ProjectFolder in_loc_txt_ProcessName: in_glob_txt_ProcessName out_loc_txt_RunId=> txt_RunId out_loc_txt_LogFile=> txt_LogFile out_loc_txt_ConfigFile=> txt_ConfigFile out_loc_txt_InputFolder=> txt_InputFolder out_loc_txt_OutputFolder=> txt_OutputFolder out_loc_txt_EvidenceFolder=> txt_EvidenceFolder out_loc_txt_ReportsFolder=> txt_ReportsFolder out_loc_bool_Ok=> bool_InitOk
+    @@CustomNote: 'Without its folders the robot cannot log or report : the run stops here, cleanly.'
+    IF bool_InitOk = False THEN
+        @@CustomNote: 'FATAL : the steps below are skipped, the end of Main still writes what it can.'
+        SET txt_RunStatus TO $'''FATAL'''
+        @@CustomNote: 'The message tells the support team exactly which folder could not be created.'
+        SET txt_FatalReason TO $'''Init_Run failed: the project folders could not be created under %in_glob_txt_ProjectFolder%'''
+    END
+    @@CustomNote: 'Each stage runs only while the run is still RUNNING : a simple pattern instead of GOTO jumps.'
+    IF txt_RunStatus = $'''RUNNING''' THEN
+        @@CustomNote: 'First log line of the run : the inputs it received, so a run can be replayed with the same values.'
+        CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''INFO''' in_loc_txt_Step: $'''Init''' in_loc_txt_Message: $'''Run started : process %in_glob_txt_ProcessName%, environment %txt_Environment%, project folder %in_glob_txt_ProjectFolder%, max items %in_glob_num_MaxItems%''' out_loc_txt_Status=> _txt_LogStatus
+        @@CustomNote: 'Reads Config.csv (created with defaults when missing), applies the rows of the current environment and checks the numbers.'
+        CALL Load_Config in_loc_txt_ConfigFile: txt_ConfigFile in_loc_txt_Environment: txt_Environment out_loc_txt_ConfigJson=> txt_ConfigJson out_loc_num_SettingsRead=> num_SettingsRead out_loc_bool_Ok=> bool_ConfigOk out_loc_txt_Detail=> txt_ConfigDetail
+        @@CustomNote: 'A wrong configuration stops the run before any item is touched : better no run than a half wrong one.'
+        IF bool_ConfigOk = False THEN
+            @@CustomNote: 'FATAL : the robot does not guess a missing or wrong setting.'
+            SET txt_RunStatus TO $'''FATAL'''
+            @@CustomNote: 'The detail names the faulty setting, so the fix is a one line change in Config.csv.'
+            SET txt_FatalReason TO $'''Load_Config failed: %txt_ConfigDetail%'''
+        END
+    END
+    @@CustomNote: 'The settings are read once, here, into typed variables : the rest of Main never reads the JSON again.'
+    IF txt_RunStatus = $'''RUNNING''' THEN
+        # Settings are read once into typed variables : every key exists (defaults of Load_Config) and the numbers were checked there
+        @@CustomNote: 'Load_Config returns text (a text crosses the boundary of a local subflow) ; it becomes an object here.'
+        Variables.ConvertJsonToCustomObject Json: txt_ConfigJson CustomObject=> obj_Config
+        @@CustomNote: 'Every key exists (defaults of Load_Config) and was checked as a number there : this conversion cannot fail.'
+        Text.ToNumber Text: obj_Config['MaxRetryNumber'] Number=> num_MaxRetryNumber
+        @@CustomNote: 'Circuit breaker threshold : how many system exceptions in a row stop the run.'
+        Text.ToNumber Text: obj_Config['MaxConsecutiveSystemExceptions'] Number=> num_MaxConsecutiveSystemExceptions
+        @@CustomNote: 'Pause before a retry : gives a slow application time to come back.'
+        Text.ToNumber Text: obj_Config['RetryDelaySeconds'] Number=> num_RetryDelaySeconds
+        @@CustomNote: 'Screenshots cost disk space and may show data : they can be switched off per environment.'
+        SET bool_ScreenshotOnError TO obj_Config['ScreenshotOnSystemException'] = $'''True'''
+        @@CustomNote: 'Demo mode : True in the template so it runs out of the box, False in a real process.'
+        SET bool_CreateDemoInput TO obj_Config['CreateDemoInput'] = $'''True'''
+        @@CustomNote: 'The input file name comes from Config.csv, its folder from the project layout.'
+        SET txt_InputFile TO $'''%txt_InputFolder%\\%obj_Config['InputFile']%'''
+        @@CustomNote: 'Comma separated process names (EXCEL,msedge) closed at start, before each retry and at the end.'
+        SET txt_ProcessesToClose TO obj_Config['ProcessesToClose']
+        @@CustomNote: 'NONE, OUTLOOK_DRAFT or OUTLOOK_SEND : DEV usually drafts, PROD sends.'
+        SET txt_NotifyChannel TO obj_Config['NotifyChannel']
+        @@CustomNote: 'Recipients of the run report.'
+        SET txt_NotifyTo TO obj_Config['NotifyTo']
+        @@CustomNote: 'Outlook account used to send the report (and passed to Process_Item when the business steps need it).'
+        SET txt_NotifyAccount TO obj_Config['NotifyAccount']
+        @@CustomNote: 'Also notify fully successful runs : useful at go live, noisy afterwards.'
+        SET bool_NotifyOnSuccess TO obj_Config['NotifyOnSuccess'] = $'''True'''
+        @@CustomNote: 'DEBUG line : the effective settings, visible only when the log level is DEBUG.'
+        CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''DEBUG''' in_loc_txt_Step: $'''Init''' in_loc_txt_Message: $'''Configuration : %num_SettingsRead% row(s) applied from %txt_ConfigFile% ; retries %num_MaxRetryNumber%, consecutive system exceptions limit %num_MaxConsecutiveSystemExceptions%, notification %txt_NotifyChannel%''' out_loc_txt_Status=> _txt_LogStatus
+        # A known state before the first item : the applications left open by a previous run are closed
+        @@CustomNote: 'Known state before the first item : applications left open by a previous run are closed.'
+        CALL Close_Applications in_loc_txt_ProcessNames: txt_ProcessesToClose out_loc_num_Closed=> num_Closed out_loc_bool_Ok=> _bool_CloseOk
+    END
+    **ENDREGION
+    @@regionColor: '#C6E0B4'
+    @@CustomNote: 'Get work items : the work list is read once, before any processing.'
+    **REGION 2.2 Get work items : the whole list, read once
+    @@CustomNote: 'Skipped when Init already failed.'
+    IF txt_RunStatus = $'''RUNNING''' THEN
+        @@CustomNote: 'One row = one transaction ; replace Get_Work_Items to plug another source (Excel, SQL, API).'
+        CALL Get_Work_Items in_loc_txt_InputFile: txt_InputFile in_loc_bool_CreateDemo: bool_CreateDemoInput out_loc_tbl_Items=> tbl_Items out_loc_num_Count=> num_ItemsRead out_loc_bool_Ok=> bool_ItemsOk out_loc_txt_Detail=> txt_ItemsDetail
+        @@CustomNote: 'No work list, no run : a missing source is FATAL, not an empty run.'
+        IF bool_ItemsOk = False THEN
+            @@CustomNote: 'FATAL : nothing was processed, the report says so.'
+            SET txt_RunStatus TO $'''FATAL'''
+            @@CustomNote: 'The detail says whether the file was missing or unreadable.'
+            SET txt_FatalReason TO $'''Get_Work_Items failed: %txt_ItemsDetail%'''
+        ELSE
+            @@CustomNote: 'INFO line with the number of items : the first figure the business team checks in the log.'
+            CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''INFO''' in_loc_txt_Step: $'''Get_Work_Items''' in_loc_txt_Message: $'''%num_ItemsRead% work item(s) read from %txt_InputFile%. %txt_ItemsDetail%''' out_loc_txt_Status=> _txt_LogStatus
+        END
+    END
+    **ENDREGION
+    @@regionColor: '#D9C3E9'
+    @@CustomNote: 'Process : the heart of the framework, one transaction per row with retries and a circuit breaker.'
+    **REGION 2.3 Process : one transaction per item, a system exception is retried after a recovery
+    @@CustomNote: 'Skipped when Init or Get work items failed.'
+    IF txt_RunStatus = $'''RUNNING''' THEN
+        @@CustomNote: 'One pass per work item ; the row travels to Process_Item as a DataRow.'
+        LOOP FOREACH row_Item IN tbl_Items
+            @@CustomNote: 'MaxItems bounds a smoke run (1 item in production for a first test) ; 0 means no limit.'
+            IF in_glob_num_MaxItems > 0 AND num_ItemsHandled >= in_glob_num_MaxItems THEN
+                @@CustomNote: 'The log says why the run stopped early : the remaining items are not lost, they wait for the next run.'
+                CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''INFO''' in_loc_txt_Step: $'''Process''' in_loc_txt_Message: $'''MaxItems reached (%in_glob_num_MaxItems%) : the remaining items are left for the next run''' out_loc_txt_Status=> _txt_LogStatus
+                @@CustomNote: 'Leaves the item loop ; the end of Main still writes the report of what was done.'
+                EXIT LOOP
+            END
+            @@regionColor: '#BDD7EE'
+            @@CustomNote: 'Attempts : an item gets up to 1 + MaxRetryNumber attempts, only when the failure is technical.'
+            **REGION 2.3.1 Attempts : SUCCESS and BUSINESS_EXCEPTION are final, SYSTEM_EXCEPTION is retried up to MaxRetryNumber times
+            @@CustomNote: 'Counts the item as handled before its first attempt, whatever its outcome.'
+            SET num_ItemsHandled TO num_ItemsHandled + 1
+            @@CustomNote: 'Attempt counter of this item, shown in the report and in the screenshot names.'
+            SET num_Attempt TO 0
+            @@CustomNote: 'PENDING keeps the attempt loop going ; only a final outcome leaves it.'
+            SET txt_Outcome TO $'''PENDING'''
+            @@CustomNote: 'Reset for each item : the values of the previous item must never leak into this one.'
+            SET txt_ItemKey TO $''''''
+            @@CustomNote: 'Reset for each item, like the key.'
+            SET txt_Reason TO $''''''
+            @@CustomNote: 'Reset for each item, like the key.'
+            SET txt_Result TO $''''''
+            @@CustomNote: 'Start time of the item, for its duration in the report.'
+            DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> date_ItemStart
+            @@CustomNote: 'Retry loop : runs again only while the outcome is still PENDING.'
+            LOOP WHILE txt_Outcome = $'''PENDING'''
+                @@CustomNote: 'One more attempt for this item.'
+                SET num_Attempt TO num_Attempt + 1
+                @@CustomNote: 'ONE transaction : Process_Item says SUCCESS, BUSINESS_EXCEPTION or SYSTEM_EXCEPTION and never throws.'
+                CALL Process_Item in_loc_row_Item: row_Item in_loc_txt_OutputFolder: txt_OutputFolder in_loc_num_Attempt: num_Attempt out_loc_txt_ItemKey=> txt_ItemKey out_loc_txt_Outcome=> txt_AttemptOutcome out_loc_txt_Reason=> txt_Reason out_loc_txt_Result=> txt_Result
+                @@CustomNote: 'SUCCESS and BUSINESS_EXCEPTION are final : replaying a wrong data gives the same result.'
+                IF txt_AttemptOutcome = $'''SUCCESS''' OR txt_AttemptOutcome = $'''BUSINESS_EXCEPTION''' THEN
+                    @@CustomNote: 'The outcome of this attempt becomes the outcome of the item.'
+                    SET txt_Outcome TO txt_AttemptOutcome
+                    @@CustomNote: 'A working application resets the circuit breaker.'
+                    SET num_ConsecutiveSystemExceptions TO 0
+                ELSE
+                    @@CustomNote: 'One more system exception in a row : the circuit breaker gets closer.'
+                    SET num_ConsecutiveSystemExceptions TO num_ConsecutiveSystemExceptions + 1
+                    @@CustomNote: 'WARN line for each failed attempt, with the exact message of the failed action.'
+                    CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''WARN''' in_loc_txt_Step: $'''Process_Item''' in_loc_txt_Message: $'''System exception on item %txt_ItemKey%, attempt %num_Attempt% : %txt_Reason%''' out_loc_txt_Status=> _txt_LogStatus
+                    @@CustomNote: 'The screenshot shows the support team what was on screen at the moment of the failure.'
+                    IF bool_ScreenshotOnError = True THEN
+                        @@CustomNote: 'PNG named run / item / attempt in the Evidence folder.'
+                        CALL Take_Evidence in_loc_txt_EvidenceFolder: txt_EvidenceFolder in_loc_txt_RunId: txt_RunId in_loc_txt_ItemKey: txt_ItemKey in_loc_num_Attempt: num_Attempt out_loc_txt_File=> txt_EvidenceFile out_loc_bool_Ok=> _bool_EvidenceOk
+                    END
+                    @@CustomNote: 'Circuit breaker : the same failure on and on means the application is down, not the item.'
+                    IF num_ConsecutiveSystemExceptions >= num_MaxConsecutiveSystemExceptions THEN
+                        @@CustomNote: 'The current item is recorded as a system exception.'
+                        SET txt_Outcome TO $'''SYSTEM_EXCEPTION'''
+                        @@CustomNote: 'ABORTED stops the item loop ; the end of Main still runs.'
+                        SET txt_RunStatus TO $'''ABORTED'''
+                        @@CustomNote: 'The reason quotes the last failure : the first clue for the support team.'
+                        SET txt_FatalReason TO $'''Run aborted after %num_ConsecutiveSystemExceptions% system exceptions in a row (MaxConsecutiveSystemExceptions = %num_MaxConsecutiveSystemExceptions%). Last one : %txt_Reason%'''
+                    ELSE IF num_Attempt > num_MaxRetryNumber THEN
+                        @@CustomNote: 'Retries exhausted : the item is a system exception, the run goes on with the next item.'
+                        SET txt_Outcome TO $'''SYSTEM_EXCEPTION'''
+                    ELSE
+                        # Recovery before the retry : the applications are closed so the next attempt starts from a known state
+                        @@CustomNote: 'Counted for the report : retries reveal unstable applications.'
+                        SET num_Retries TO num_Retries + 1
+                        @@CustomNote: 'Recovery : the applications are closed so the next attempt starts from a known state.'
+                        CALL Close_Applications in_loc_txt_ProcessNames: txt_ProcessesToClose out_loc_num_Closed=> num_Closed out_loc_bool_Ok=> _bool_CloseOk
+                        @@CustomNote: 'Deliberate pause before the retry (RetryDelaySeconds), not a synchronisation wait.'
+                        WAIT num_RetryDelaySeconds
+                    END
+                END
+            END
+            **ENDREGION
+            @@regionColor: '#BDD7EE'
+            @@CustomNote: 'Transaction status : every item leaves the same traces, whatever its outcome.'
+            **REGION 2.3.2 Transaction status : counters, one result row and one log line per item
+            @@CustomNote: 'End time of the item.'
+            DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> date_ItemEnd
+            @@CustomNote: 'Duration of the item, attempts and pauses included.'
+            DateTime.Subtract FromDate: date_ItemEnd SubstractDate: date_ItemStart TimeUnit: DateTime.DifferenceTimeUnit.Seconds TimeDifference=> num_ItemSeconds
+            @@CustomNote: 'Milliseconds without decimals : the same text in every Windows locale.'
+            Text.FromNumber Number: num_ItemSeconds * 1000 DecimalPlaces: 0 UseThousandsSeparator: False FormattedNumber=> txt_ItemMs
+            @@CustomNote: 'Start time written as text in a fixed format, for Excel or Power BI.'
+            Text.ConvertDateTimeToText.FromCustomDateTime DateTime: date_ItemStart CustomFormat: $'''yyyy-MM-dd HH:mm:ss''' Result=> txt_ItemStart
+            @@CustomNote: 'One row of the report per item : key, outcome, attempts, reason, result, start, duration.'
+            Variables.AddRowToDataTable.AppendRowToDataTable DataTable: tbl_Results RowToAdd: [txt_RunId, txt_ItemKey, txt_Outcome, num_Attempt, txt_Reason, txt_Result, txt_ItemStart, txt_ItemMs]
+            @@CustomNote: 'One log line per item, its level following the outcome.'
+            IF txt_Outcome = $'''SUCCESS''' THEN
+                @@CustomNote: 'Business count of transactions done.'
+                SET num_Success TO num_Success + 1
+                @@CustomNote: 'INFO : the result of the transaction (a file, a draft, an id) is quoted.'
+                CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''INFO''' in_loc_txt_Step: $'''Process''' in_loc_txt_Message: $'''Item %txt_ItemKey% : SUCCESS in %num_Attempt% attempt(s), %txt_ItemMs% ms ; %txt_Result%''' out_loc_txt_Status=> _txt_LogStatus
+            ELSE IF txt_Outcome = $'''BUSINESS_EXCEPTION''' THEN
+                @@CustomNote: 'Business count of data errors.'
+                SET num_BusinessExceptions TO num_BusinessExceptions + 1
+                @@CustomNote: 'WARN : the business team reads the reason and corrects the data.'
+                CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''WARN''' in_loc_txt_Step: $'''Process''' in_loc_txt_Message: $'''Item %txt_ItemKey% : BUSINESS_EXCEPTION ; %txt_Reason%''' out_loc_txt_Status=> _txt_LogStatus
+            ELSE
+                @@CustomNote: 'Support count of technical failures.'
+                SET num_SystemExceptions TO num_SystemExceptions + 1
+                @@CustomNote: 'ERROR : the support team reads the reason and the screenshots.'
+                CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''ERROR''' in_loc_txt_Step: $'''Process''' in_loc_txt_Message: $'''Item %txt_ItemKey% : SYSTEM_EXCEPTION after %num_Attempt% attempt(s) ; %txt_Reason%''' out_loc_txt_Status=> _txt_LogStatus
+            END
+            **ENDREGION
+            @@CustomNote: 'A circuit breaker inside the attempts also stops the item loop.'
+            IF txt_RunStatus <> $'''RUNNING''' THEN
+                @@CustomNote: 'Leaves the item loop after an ABORTED.'
+                EXIT LOOP
+            END
+        END
+    END
+    **ENDREGION
+END
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Run status : decide COMPLETED, ABORTED or FATAL and explain it.'
+**REGION 3. Run status : COMPLETED, ABORTED or FATAL with the message of the unexpected error on one line
+@@CustomNote: 'FATAL without a reason means an unexpected error caught by BLOCK Run : its message is read here.'
+IF txt_RunStatus = $'''FATAL''' AND txt_FatalReason = $'''''' THEN
+    @@CustomNote: 'Get last error : the message of the action that failed (subflow, action, error, details).'
+    ERROR => txt_LastError
+    @@CustomNote: 'The message is put on one line : a log line and a JSON value must not break.'
+    Text.Replace.ReplaceTextWithRegex Text: txt_LastError TextToFind: $'''\\s*[\\r\\n]+\\s*''' IgnoreCase: False ReplaceWith: $''' / ''' ActivateEscapeSequences: False Result=> txt_FatalReason
+END
+@@CustomNote: 'Nobody stopped the run : it is COMPLETED, even with items in exception.'
+IF txt_RunStatus = $'''RUNNING''' THEN
+    @@CustomNote: 'COMPLETED means the robot did its job ; item exceptions are results, not robot failures.'
+    SET txt_RunStatus TO $'''COMPLETED'''
+END
+@@CustomNote: 'A stopped run leaves one FATAL line in the log.'
+IF txt_FatalReason <> $'''''' THEN
+    @@CustomNote: 'FATAL line : status and reason, also sent to the Power Automate run log.'
+    CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''FATAL''' in_loc_txt_Step: $'''Main''' in_loc_txt_Message: $'''%txt_RunStatus% : %txt_FatalReason%''' out_loc_txt_Status=> _txt_LogStatus
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'End : report, summary and notification, each one isolated so none can stop the clean-up.'
+**REGION 4. End : run report, JSON summary, notification - each step reports its own failure, none stops the end
+@@CustomNote: 'Second guarded zone : a failure in the report or the e-mail never prevents the outputs from being set.'
+BLOCK Finish
+ON BLOCK ERROR
+    SET txt_FinishError TO $'''The end of the run failed : see the error list of the run'''
+END
+    @@CustomNote: 'End time of the run.'
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> date_RunEnd
+    @@CustomNote: 'Duration of the whole run.'
+    DateTime.Subtract FromDate: date_RunEnd SubstractDate: date_RunStart TimeUnit: DateTime.DifferenceTimeUnit.Seconds TimeDifference=> num_RunSeconds
+    @@CustomNote: 'Seconds without decimals : valid JSON in every Windows locale.'
+    Text.FromNumber Number: num_RunSeconds DecimalPlaces: 0 UseThousandsSeparator: False FormattedNumber=> txt_RunSeconds
+    @@CustomNote: 'CSV for Excel or Power BI and HTML for people : one row per item.'
+    CALL Write_Run_Report in_loc_tbl_Results: tbl_Results in_loc_txt_ReportsFolder: txt_ReportsFolder in_loc_txt_RunId: txt_RunId in_loc_txt_Title: $'''%in_glob_txt_ProcessName% - %txt_Environment% - %txt_RunStatus%''' out_loc_txt_CsvFile=> txt_ReportCsv out_loc_txt_HtmlFile=> txt_ReportHtml out_loc_txt_Html=> txt_ReportHtmlBody out_loc_bool_Ok=> bool_ReportOk
+    @@CustomNote: 'A report that could not be written is not quoted in the summary.'
+    IF bool_ReportOk = False THEN
+        @@CustomNote: 'The summary points to no file rather than to a missing one.'
+        SET txt_ReportCsv TO $''''''
+    END
+    @@CustomNote: 'Paths contain backslashes : escaped so the JSON stays valid.'
+    CALL To_Json_Text in_loc_txt_Text: txt_ReportCsv out_loc_txt_Json=> txt_ReportCsvJson
+    @@CustomNote: 'The fatal reason may contain quotes or backslashes : escaped too.'
+    CALL To_Json_Text in_loc_txt_Text: txt_FatalReason out_loc_txt_Json=> txt_FatalReasonJson
+    @@CustomNote: 'The process name is free text typed by a maker : escaped as well.'
+    CALL To_Json_Text in_loc_txt_Text: in_glob_txt_ProcessName out_loc_txt_Json=> txt_ProcessNameJson
+    @@CustomNote: 'JSON summary of the run : what a cloud flow reads to decide what to do next.'
+    SET out_glob_txt_RunSummary TO $'''{\"runId\": \"%txt_RunId%\", \"process\": \"%txt_ProcessNameJson%\", \"environment\": \"%txt_Environment%\", \"status\": \"%txt_RunStatus%\", \"itemsRead\": %num_ItemsRead%, \"itemsHandled\": %num_ItemsHandled%, \"success\": %num_Success%, \"businessExceptions\": %num_BusinessExceptions%, \"systemExceptions\": %num_SystemExceptions%, \"retries\": %num_Retries%, \"durationSeconds\": %txt_RunSeconds%, \"report\": \"%txt_ReportCsvJson%\", \"error\": \"%txt_FatalReasonJson%\"}'''
+    # Self-check : the summary is read back as JSON, the way a cloud flow will parse it
+    @@CustomNote: 'The summary is checked before it leaves the robot.'
+    SET bool_SummaryOk TO True
+    @@CustomNote: 'Self check : the summary is parsed back as JSON, the way the cloud flow will parse it.'
+    Variables.ConvertJsonToCustomObject Json: out_glob_txt_RunSummary CustomObject=> _obj_SummaryCheck
+    ON ERROR
+        SET bool_SummaryOk TO False
+    END
+    @@CustomNote: 'An invalid summary is logged rather than hidden.'
+    IF bool_SummaryOk = False THEN
+        @@CustomNote: 'WARN line with the faulty summary, to fix the template.'
+        CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''WARN''' in_loc_txt_Step: $'''End''' in_loc_txt_Message: $'''The run summary is not valid JSON : %out_glob_txt_RunSummary%''' out_loc_txt_Status=> _txt_LogStatus
+    END
+    @@CustomNote: 'Notify only when someone has something to do, unless NotifyOnSuccess asks for every run.'
+    SET bool_Notify TO bool_NotifyOnSuccess = True OR txt_RunStatus <> $'''COMPLETED''' OR num_BusinessExceptions > 0 OR num_SystemExceptions > 0
+    @@CustomNote: 'No notification for a quiet, fully successful run.'
+    IF bool_Notify = True THEN
+        @@CustomNote: 'Outlook draft or e-mail with the HTML report ; NONE in the demo.'
+        CALL Send_Notification in_loc_txt_Channel: txt_NotifyChannel in_loc_txt_To: txt_NotifyTo in_loc_txt_Account: txt_NotifyAccount in_loc_txt_Subject: $'''[%txt_RunStatus%] %in_glob_txt_ProcessName% %txt_Environment% : %num_Success% success, %num_BusinessExceptions% business, %num_SystemExceptions% system''' in_loc_txt_HtmlBody: txt_ReportHtmlBody out_loc_bool_Sent=> bool_NotificationSent out_loc_txt_Detail=> txt_NotificationDetail
+        @@CustomNote: 'DEBUG line : whether the notification left and why.'
+        CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: $'''DEBUG''' in_loc_txt_Step: $'''End''' in_loc_txt_Message: $'''Notification sent %bool_NotificationSent% : %txt_NotificationDetail%''' out_loc_txt_Status=> _txt_LogStatus
+    END
+END
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Clean-up and outputs : always run, after a success as after a crash.'
+**REGION 5. Clean-up and outputs : applications closed, flow outputs set, one summary line in the log
+@@CustomNote: 'Applications are closed so the next run starts clean.'
+CALL Close_Applications in_loc_txt_ProcessNames: txt_ProcessesToClose out_loc_num_Closed=> num_Closed out_loc_bool_Ok=> _bool_CloseOk
+@@CustomNote: 'Success is True only for COMPLETED ; the cloud flow branches on it.'
+SET out_glob_bool_Success TO txt_RunStatus = $'''COMPLETED'''
+@@CustomNote: 'Empty for a COMPLETED run, the reason otherwise.'
+SET out_glob_txt_ErrorMessage TO txt_FatalReason
+@@CustomNote: 'Level of the last log line, INFO for a successful run.'
+SET txt_EndLevel TO $'''INFO'''
+@@CustomNote: 'A run that did not complete ends with an ERROR line, easy to filter.'
+IF out_glob_bool_Success = False THEN
+    @@CustomNote: 'ERROR : the last line of a failed run stands out in the log.'
+    SET txt_EndLevel TO $'''ERROR'''
+END
+@@CustomNote: 'Last line of the run : status, counts, retries, duration and report paths in one line.'
+CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: in_glob_txt_LogLevel in_loc_txt_Level: txt_EndLevel in_loc_txt_Step: $'''Main''' in_loc_txt_Message: $'''Run ended %txt_RunStatus% in %txt_RunSeconds% s : %num_ItemsHandled% / %num_ItemsRead% item(s), %num_Success% success, %num_BusinessExceptions% business, %num_SystemExceptions% system, %num_Retries% retries ; report %txt_ReportCsv% and %txt_ReportHtml%''' out_loc_txt_Status=> _txt_LogStatus
+**ENDREGION

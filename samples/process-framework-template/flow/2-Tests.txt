@@ -1,0 +1,355 @@
+# ===== Tests (global): one case per local function and per recovery path, PASS / FAIL lines written as they run =====
+# Run: right-click the first action > Run from here with default values. Each case states the values it expects.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Fixtures : every case works in its own folder under C:\\Temp, nothing of a real project is touched.'
+**REGION 1. Fixtures : a fresh test root, the report file, fixed work items
+@@CustomNote: 'The report accumulates the PASS / FAIL lines ; Verify also writes each line to the file at once.'
+SET txt_Report TO $''''''
+@@CustomNote: 'The stamp separates two test runs : their folders and reports never mix.'
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> date_Now
+@@CustomNote: 'yyyyMMdd-HHmmss : sorts in time order in the Temp folder.'
+Text.ConvertDateTimeToText.FromCustomDateTime DateTime: date_Now CustomFormat: $'''yyyyMMdd-HHmmss''' Result=> txt_Stamp
+@@CustomNote: 'A fresh root per test run : the folder creation cases always start from nothing.'
+SET txt_TestRoot TO $'''C:\\Temp\\PAD_REF_Tests\\%txt_Stamp%'''
+@@CustomNote: 'One report file per test run, kept as the proof of the run.'
+SET txt_TestReportFile TO $'''C:\\Temp\\tests-PAD_REF-%txt_Stamp%.txt'''
+@@CustomNote: 'A path whose drive folder does not exist : every recovery case uses it to force a failure.'
+SET txt_UnreachableFile TO $'''C:\\PAD_REF_does_not_exist\\missing\\file.txt'''
+@@CustomNote: 'Fixed work items covering the three outcomes : one success, three business rules broken, one file name Windows refuses.'
+Variables.CreateNewDatatable InputTable: { ^['Reference', 'Customer', 'Amount', 'Email'], ['T-001', 'Contoso', '1250', 'ap@contoso.com'], ['T-002', 'Fabrikam', '-10', 'billing@fabrikam.com'], ['T-003', 'Northwind', 'abc', 'finance.northwind@example.com'], ['T-004', 'Tailspin', '300', 'no-email'], ['T:005', 'Litware', '99', 'ap.litware@example.com'] } DataTable=> tbl_Fixture
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Init_Run : the folders are created even when the parents do not exist, and an empty path is refused.'
+**REGION 2. Init_Run : nested folders created, empty project folder refused
+# --- Init_Run : a project folder two levels below a missing folder -> every level and the 6 sub-folders created, run id and log file set ---
+@@CustomNote: 'The parent of project does not exist yet : proves that every missing level is created (Folder.Create alone refuses).'
+CALL Init_Run in_loc_txt_ProjectFolder: $'''%txt_TestRoot%\\project''' in_loc_txt_ProcessName: $'''PAD_REF_Test''' out_loc_txt_RunId=> txt_RunId out_loc_txt_LogFile=> txt_LogFile out_loc_txt_ConfigFile=> txt_ConfigFile out_loc_txt_InputFolder=> txt_InputFolder out_loc_txt_OutputFolder=> txt_OutputFolder out_loc_txt_EvidenceFolder=> txt_EvidenceFolder out_loc_txt_ReportsFolder=> txt_ReportsFolder out_loc_bool_Ok=> bool_Ok
+@@CustomNote: 'Checked on disk, not only from the Ok flag the function returns.'
+SET bool_FolderOk TO False
+@@CustomNote: 'The Reports folder is the last one created : if it exists, the six exist.'
+IF (Folder.IfFolderExists.Exists Path: txt_ReportsFolder) THEN
+    @@CustomNote: 'Folder found on disk.'
+    SET bool_FolderOk TO True
+END
+@@CustomNote: 'PASS needs the flag, the folder on disk, a run id and a log file name.'
+SET bool_Pass TO bool_Ok = True AND bool_FolderOk = True AND txt_RunId <> $'''''' AND txt_LogFile <> $''''''
+@@CustomNote: 'Writes PASS or FAIL with the observed values, so a FAIL explains itself.'
+CALL Verify in_loc_txt_Case: $'''Init_Run - nested project folder created, run id and log file set''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% ReportsFolderExists=%bool_FolderOk% RunId=%txt_RunId% LogFile=%txt_LogFile%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Init_Run - recovery : an empty project folder gives Ok = False without exception ---
+@@CustomNote: 'Recovery case : an empty project folder must give Ok = False, never a crash.'
+CALL Init_Run in_loc_txt_ProjectFolder: $'''''' in_loc_txt_ProcessName: $'''PAD_REF_Test''' out_loc_txt_RunId=> _txt_RunId out_loc_txt_LogFile=> _txt_LogFile out_loc_txt_ConfigFile=> _txt_ConfigFile out_loc_txt_InputFolder=> _txt_InputFolder out_loc_txt_OutputFolder=> _txt_OutputFolder out_loc_txt_EvidenceFolder=> _txt_EvidenceFolder out_loc_txt_ReportsFolder=> _txt_ReportsFolder out_loc_bool_Ok=> bool_Ok
+@@CustomNote: 'The expected answer is a refusal.'
+SET bool_Pass TO bool_Ok = False
+@@CustomNote: 'A FAIL here would mean a robot that writes to an undefined folder.'
+CALL Verify in_loc_txt_Case: $'''Init_Run - recovery : empty project folder -> Ok = False''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Write_Log : a line is written, a line under the minimum level is filtered, an unreachable file fails softly.'
+**REGION 3. Write_Log : written, filtered, failed
+# --- Write_Log : an INFO line with the minimum level INFO is written, fields separated by ' | ' ---
+@@CustomNote: 'The level is given in lower case on purpose : Write_Log must accept info as INFO.'
+CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: $'''INFO''' in_loc_txt_Level: $'''info''' in_loc_txt_Step: $'''Tests''' in_loc_txt_Message: $'''Test line for Write_Log''' out_loc_txt_Status=> txt_LogStatus
+@@CustomNote: 'Reset first : a failed read must not leave the content of an earlier case.'
+SET txt_LogContent TO $''''''
+@@CustomNote: 'The file is read back : the case checks what is really on disk.'
+File.ReadTextFromFile.ReadText File: txt_LogFile Encoding: File.TextFileEncoding.UTF8 Content=> txt_LogContent
+ON ERROR
+    SET txt_LogContent TO $'''(log file not readable)'''
+END
+@@CustomNote: 'The exact layout is checked : time | run | level | step | message.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_LogContent TextToFind: $''' | INFO | Tests | Test line for Write_Log''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'PASS when the status says WRITTEN and the line is in the file.'
+SET bool_Pass TO txt_LogStatus = $'''WRITTEN''' AND num_Position >= 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Write_Log - INFO line written at minimum level INFO''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Status=%txt_LogStatus% Position=%num_Position%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Write_Log : a DEBUG line with the minimum level INFO is filtered ---
+@@CustomNote: 'DEBUG is below INFO : this line must not reach the file.'
+CALL Write_Log in_loc_txt_LogFile: txt_LogFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: $'''INFO''' in_loc_txt_Level: $'''DEBUG''' in_loc_txt_Step: $'''Tests''' in_loc_txt_Message: $'''Debug line that must not be written''' out_loc_txt_Status=> txt_LogStatus
+@@CustomNote: 'The function must say FILTERED, not WRITTEN and not FAILED.'
+SET bool_Pass TO txt_LogStatus = $'''FILTERED'''
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Write_Log - DEBUG line filtered at minimum level INFO''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Status=%txt_LogStatus%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Write_Log - recovery : a log file in a missing folder gives FAILED without exception ---
+@@CustomNote: 'Recovery case : a log file in a missing folder must not stop a robot.'
+CALL Write_Log in_loc_txt_LogFile: txt_UnreachableFile in_loc_txt_RunId: txt_RunId in_loc_txt_MinLevel: $'''INFO''' in_loc_txt_Level: $'''ERROR''' in_loc_txt_Step: $'''Tests''' in_loc_txt_Message: $'''Line to an unreachable file''' out_loc_txt_Status=> txt_LogStatus
+@@CustomNote: 'FAILED without exception : the robot goes on, only the log line is lost.'
+SET bool_Pass TO txt_LogStatus = $'''FAILED'''
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Write_Log - recovery : unreachable log file -> FAILED''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Status=%txt_LogStatus%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Load_Config : defaults, environment override and the three ways a configuration can be wrong.'
+**REGION 4. Load_Config : defaults written, environment override, invalid number, wrong header, unreachable file
+# --- Load_Config : no Config.csv -> the default one is written ; DEV applies the 11 rows '*' -> MaxRetryNumber 2 ---
+@@CustomNote: 'No Config.csv yet : Load_Config must write the default one and use it ; dev in lower case checks the upper casing.'
+CALL Load_Config in_loc_txt_ConfigFile: txt_ConfigFile in_loc_txt_Environment: $'''dev''' out_loc_txt_ConfigJson=> txt_ConfigJson out_loc_num_SettingsRead=> num_SettingsRead out_loc_bool_Ok=> bool_Ok out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'The JSON returned by the function is parsed, as Main does.'
+Variables.ConvertJsonToCustomObject Json: txt_ConfigJson CustomObject=> obj_Config
+@@CustomNote: 'Checked on disk : the default file must exist after the call.'
+SET bool_FileOk TO False
+@@CustomNote: 'The default Config.csv was written.'
+IF (File.IfFile.Exists File: txt_ConfigFile) THEN
+    @@CustomNote: 'File found on disk.'
+    SET bool_FileOk TO True
+END
+@@CustomNote: '11 rows apply to every environment ; the PROD row must not apply in DEV.'
+SET bool_Pass TO bool_Ok = True AND bool_FileOk = True AND num_SettingsRead = 11 AND obj_Config['MaxRetryNumber'] = $'''2''' AND obj_Config['NotifyChannel'] = $'''NONE'''
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Load_Config - default Config.csv written, DEV -> 11 rows, MaxRetryNumber 2''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% FileExists=%bool_FileOk% Rows=%num_SettingsRead% Detail=%txt_Detail% Json=%txt_ConfigJson%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Load_Config : PROD applies the 11 rows '*' then its own row -> 12 rows, MaxRetryNumber 1 ---
+@@CustomNote: 'Same file, environment PROD : its own row must win over the row for every environment.'
+CALL Load_Config in_loc_txt_ConfigFile: txt_ConfigFile in_loc_txt_Environment: $'''PROD''' out_loc_txt_ConfigJson=> txt_ConfigJson out_loc_num_SettingsRead=> num_SettingsRead out_loc_bool_Ok=> bool_Ok out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'Parsed again for the PROD values.'
+Variables.ConvertJsonToCustomObject Json: txt_ConfigJson CustomObject=> obj_Config
+@@CustomNote: '12 rows applied and MaxRetryNumber 1 : the PROD override is proven.'
+SET bool_Pass TO bool_Ok = True AND num_SettingsRead = 12 AND obj_Config['MaxRetryNumber'] = $'''1'''
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Load_Config - PROD override -> 12 rows, MaxRetryNumber 1''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% Rows=%num_SettingsRead% Json=%txt_ConfigJson%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Load_Config - recovery : a setting that must be a number is not -> Ok = False, the detail names it ---
+@@CustomNote: 'A configuration where a number is not a number.'
+SET txt_BadConfig TO $'''%txt_TestRoot%\\bad-number.csv'''
+@@CustomNote: 'Written by the test itself : the case does not depend on a file shipped with the flow.'
+File.WriteText File: txt_BadConfig TextToWrite: $'''Name;Value;Environment;Description
+MaxRetryNumber;abc;*;not a number''' AppendNewLine: True IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.UTF8
+@@CustomNote: 'The function must refuse the file and name the faulty key.'
+CALL Load_Config in_loc_txt_ConfigFile: txt_BadConfig in_loc_txt_Environment: $'''DEV''' out_loc_txt_ConfigJson=> _txt_ConfigJson out_loc_num_SettingsRead=> num_SettingsRead out_loc_bool_Ok=> bool_Ok out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'The detail must name MaxRetryNumber : that is what makes the error actionable.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_Detail TextToFind: $'''MaxRetryNumber''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'Refused AND explained.'
+SET bool_Pass TO bool_Ok = False AND num_Position >= 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Load_Config - recovery : MaxRetryNumber abc -> Ok = False, detail names the key''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% Detail=%txt_Detail%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Load_Config - recovery : a file without the header Name;Value;Environment -> Ok = False, no column read ---
+@@CustomNote: 'A configuration without the expected header.'
+SET txt_BadConfig TO $'''%txt_TestRoot%\\bad-header.csv'''
+@@CustomNote: 'A header that is not Name;Value;Environment.'
+File.WriteText File: txt_BadConfig TextToWrite: $'''Key;Val
+MaxRetryNumber;3''' AppendNewLine: True IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.UTF8
+@@CustomNote: 'Refused before any column is read : a missing column would stop the flow without any handler.'
+CALL Load_Config in_loc_txt_ConfigFile: txt_BadConfig in_loc_txt_Environment: $'''DEV''' out_loc_txt_ConfigJson=> _txt_ConfigJson out_loc_num_SettingsRead=> num_SettingsRead out_loc_bool_Ok=> bool_Ok out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'Refused and no setting applied.'
+SET bool_Pass TO bool_Ok = False AND num_SettingsRead = 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Load_Config - recovery : wrong header -> Ok = False''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% Rows=%num_SettingsRead% Detail=%txt_Detail%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Load_Config - recovery : a Config.csv in a missing folder cannot be written -> Ok = False ---
+@@CustomNote: 'Recovery case : the default file cannot even be written in a missing folder.'
+CALL Load_Config in_loc_txt_ConfigFile: txt_UnreachableFile in_loc_txt_Environment: $'''DEV''' out_loc_txt_ConfigJson=> _txt_ConfigJson out_loc_num_SettingsRead=> num_SettingsRead out_loc_bool_Ok=> bool_Ok out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'The expected answer is a refusal.'
+SET bool_Pass TO bool_Ok = False
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Load_Config - recovery : unreachable config file -> Ok = False''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% Detail=%txt_Detail%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Get_Work_Items : the demo file is created and read, a missing file without demo is refused.'
+**REGION 5. Get_Work_Items : demo file created and read, missing file refused
+# --- Get_Work_Items : no input file, demo requested -> 6 items, the fifth is INV:005 ---
+@@CustomNote: 'Demo mode : the function writes the 6 demo items, then reads them like a real file.'
+CALL Get_Work_Items in_loc_txt_InputFile: $'''%txt_InputFolder%\\work-items.csv''' in_loc_bool_CreateDemo: True out_loc_tbl_Items=> tbl_Items out_loc_num_Count=> num_Count out_loc_bool_Ok=> bool_Ok out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'Reset first : a missing row must not leave a value of an earlier case.'
+SET txt_FifthKey TO $''''''
+@@CustomNote: 'Guard : indexing a table that is too short would stop the flow, no handler catches it.'
+IF num_Count >= 5 THEN
+    @@CustomNote: 'The fifth row is the one with the refused file name : it proves the order and the content.'
+    SET txt_FifthKey TO $'''%tbl_Items[4]['Reference']%'''
+END
+@@CustomNote: '6 rows and the right fifth key.'
+SET bool_Pass TO bool_Ok = True AND num_Count = 6 AND txt_FifthKey = $'''INV:005'''
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Get_Work_Items - demo file created and read -> 6 items, fifth INV:005''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% Count=%num_Count% Fifth=%txt_FifthKey% Detail=%txt_Detail%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Get_Work_Items - recovery : no input file, no demo -> Ok = False, 0 item ---
+@@CustomNote: 'Recovery case : no file and no demo must be an error the caller can test.'
+CALL Get_Work_Items in_loc_txt_InputFile: $'''%txt_InputFolder%\\absent.csv''' in_loc_bool_CreateDemo: False out_loc_tbl_Items=> _tbl_Items out_loc_num_Count=> num_Count out_loc_bool_Ok=> bool_Ok out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'Ok = False and no item.'
+SET bool_Pass TO bool_Ok = False AND num_Count = 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Get_Work_Items - recovery : missing file without demo -> Ok = False''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% Count=%num_Count% Detail=%txt_Detail%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Process_Item : one case per outcome, with the exact reason checked.'
+**REGION 6. Process_Item : success, three business exceptions, one system exception
+# --- Process_Item : T-001, amount 1250, valid e-mail -> SUCCESS, receipt written ---
+@@CustomNote: 'Valid item : the business rules pass and the receipt is written.'
+CALL Process_Item in_loc_row_Item: tbl_Fixture[0] in_loc_txt_OutputFolder: txt_OutputFolder in_loc_num_Attempt: 1 out_loc_txt_ItemKey=> txt_ItemKey out_loc_txt_Outcome=> txt_Outcome out_loc_txt_Reason=> txt_Reason out_loc_txt_Result=> txt_Result
+@@CustomNote: 'Checked on disk, not only from the outcome.'
+SET bool_FileOk TO False
+@@CustomNote: 'Guard : an empty path would make the file test fail.'
+IF txt_Result <> $'''''' THEN
+    @@CustomNote: 'The receipt really exists.'
+    IF (File.IfFile.Exists File: txt_Result) THEN
+        @@CustomNote: 'Receipt found on disk.'
+        SET bool_FileOk TO True
+    END
+END
+@@CustomNote: 'SUCCESS, the right key and the file on disk.'
+SET bool_Pass TO txt_Outcome = $'''SUCCESS''' AND txt_ItemKey = $'''T-001''' AND bool_FileOk = True
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Process_Item - T-001 valid -> SUCCESS, receipt written''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Key=%txt_ItemKey% Outcome=%txt_Outcome% Reason=%txt_Reason% Result=%txt_Result%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Process_Item : T-002, amount -10 -> BUSINESS_EXCEPTION 'Amount must be positive' ---
+@@CustomNote: 'Negative amount : a rule of region 2.1 must stop the item before region 2.2.'
+CALL Process_Item in_loc_row_Item: tbl_Fixture[1] in_loc_txt_OutputFolder: txt_OutputFolder in_loc_num_Attempt: 1 out_loc_txt_ItemKey=> txt_ItemKey out_loc_txt_Outcome=> txt_Outcome out_loc_txt_Reason=> txt_Reason out_loc_txt_Result=> txt_Result
+@@CustomNote: 'The reason must say why, in words a business user understands.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_Reason TextToFind: $'''must be positive''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'Business exception and no result : nothing was written for this item.'
+SET bool_Pass TO txt_Outcome = $'''BUSINESS_EXCEPTION''' AND num_Position >= 0 AND txt_Result = $''''''
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Process_Item - T-002 amount -10 -> BUSINESS_EXCEPTION''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Outcome=%txt_Outcome% Reason=%txt_Reason% Result=%txt_Result%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Process_Item : T-003, amount abc -> BUSINESS_EXCEPTION 'Amount is not a number' ---
+@@CustomNote: 'Amount that is not a number : the conversion fails and becomes a business exception, not a crash.'
+CALL Process_Item in_loc_row_Item: tbl_Fixture[2] in_loc_txt_OutputFolder: txt_OutputFolder in_loc_num_Attempt: 1 out_loc_txt_ItemKey=> txt_ItemKey out_loc_txt_Outcome=> txt_Outcome out_loc_txt_Reason=> txt_Reason out_loc_txt_Result=> txt_Result
+@@CustomNote: 'The reason names the problem.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_Reason TextToFind: $'''not a number''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'Business exception expected.'
+SET bool_Pass TO txt_Outcome = $'''BUSINESS_EXCEPTION''' AND num_Position >= 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Process_Item - T-003 amount abc -> BUSINESS_EXCEPTION''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Outcome=%txt_Outcome% Reason=%txt_Reason%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Process_Item : T-004, e-mail no-email -> BUSINESS_EXCEPTION 'Email is not valid' ---
+@@CustomNote: 'E-mail without @ : the regular expression rule rejects it.'
+CALL Process_Item in_loc_row_Item: tbl_Fixture[3] in_loc_txt_OutputFolder: txt_OutputFolder in_loc_num_Attempt: 1 out_loc_txt_ItemKey=> txt_ItemKey out_loc_txt_Outcome=> txt_Outcome out_loc_txt_Reason=> txt_Reason out_loc_txt_Result=> txt_Result
+@@CustomNote: 'The reason names the problem.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_Reason TextToFind: $'''Email is not valid''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'Business exception expected.'
+SET bool_Pass TO txt_Outcome = $'''BUSINESS_EXCEPTION''' AND num_Position >= 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Process_Item - T-004 invalid e-mail -> BUSINESS_EXCEPTION''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Outcome=%txt_Outcome% Reason=%txt_Reason%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Process_Item : T:005, a file name Windows refuses -> SYSTEM_EXCEPTION with the error message, no exception for the caller ---
+@@CustomNote: 'Key with a colon : Windows refuses the receipt name, the action fails inside the BLOCK and becomes a system exception.'
+CALL Process_Item in_loc_row_Item: tbl_Fixture[4] in_loc_txt_OutputFolder: txt_OutputFolder in_loc_num_Attempt: 1 out_loc_txt_ItemKey=> txt_ItemKey out_loc_txt_Outcome=> txt_Outcome out_loc_txt_Reason=> txt_Reason out_loc_txt_Result=> txt_Result
+@@CustomNote: 'System exception with a reason : the message of the failed action reached the caller.'
+SET bool_Pass TO txt_Outcome = $'''SYSTEM_EXCEPTION''' AND txt_Reason <> $'''''' AND txt_ItemKey = $'''T:005'''
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Process_Item - T:005 refused file name -> SYSTEM_EXCEPTION with its message''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Outcome=%txt_Outcome% Reason=%txt_Reason%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Take_Evidence and Close_Applications : a real screenshot and a real process closed.'
+**REGION 7. Take_Evidence, Close_Applications : capture written, process closed, empty list
+# --- Take_Evidence : a PNG of the primary screen, the refused character of the key replaced ---
+@@CustomNote: 'Key with a colon : the file name must replace it, or the screenshot would fail.'
+CALL Take_Evidence in_loc_txt_EvidenceFolder: txt_EvidenceFolder in_loc_txt_RunId: txt_RunId in_loc_txt_ItemKey: $'''T:005''' in_loc_num_Attempt: 2 out_loc_txt_File=> txt_EvidenceFile out_loc_bool_Ok=> bool_Ok
+@@CustomNote: 'Checked on disk.'
+SET bool_FileOk TO False
+@@CustomNote: 'The PNG exists.'
+IF (File.IfFile.Exists File: txt_EvidenceFile) THEN
+    @@CustomNote: 'File found on disk.'
+    SET bool_FileOk TO True
+END
+@@CustomNote: 'The refused character became an underscore.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_EvidenceFile TextToFind: $'''_T_005_attempt2.png''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'Flag, file and name all right.'
+SET bool_Pass TO bool_Ok = True AND bool_FileOk = True AND num_Position >= 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Take_Evidence - PNG written, key T:005 -> T_005''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% Exists=%bool_FileOk% File=%txt_EvidenceFile%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Close_Applications : a PING started here is closed, a name that is not running is ignored -> 1 closed ---
+@@CustomNote: 'A harmless process to close : ping for 60 seconds, hidden.'
+System.RunApplication.RunApplication ApplicationPath: $'''ping.exe''' CommandLineArguments: $'''-n 60 127.0.0.1''' WindowStyle: System.ProcessWindowStyle.Hidden ProcessId=> num_PingPid
+@@CustomNote: 'Set before the wait, reset by the handler if PING never starts.'
+SET bool_PingStarted TO True
+@@CustomNote: 'Waits for the process instead of a fixed pause : the case is as fast as the machine.'
+WAIT (System.WaitForProcess.ProcessToStart ProcessName: $'''PING''') FOR 10
+ON ERROR
+    SET bool_PingStarted TO False
+END
+@@CustomNote: 'A missing name and a running one : only the running one is counted.'
+CALL Close_Applications in_loc_txt_ProcessNames: $'''PAD_REF_NO_SUCH_PROCESS, PING''' out_loc_num_Closed=> num_Closed out_loc_bool_Ok=> bool_Ok
+@@CustomNote: 'Checked from outside the function.'
+SET bool_PingGone TO False
+@@CustomNote: 'PING must be gone.'
+IF (System.IfProcess.ProcessIsNotRunning ProcessName: $'''PING''') THEN
+    @@CustomNote: 'Process closed.'
+    SET bool_PingGone TO True
+END
+@@CustomNote: 'Started, closed, counted once and really gone.'
+SET bool_Pass TO bool_PingStarted = True AND bool_Ok = True AND num_Closed = 1 AND bool_PingGone = True
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Close_Applications - running PING closed, absent name ignored -> 1''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''PingStarted=%bool_PingStarted% Pid=%num_PingPid% Ok=%bool_Ok% Closed=%num_Closed% PingGone=%bool_PingGone%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Close_Applications : an empty list closes nothing ---
+@@CustomNote: 'An empty list closes nothing and is not an error.'
+CALL Close_Applications in_loc_txt_ProcessNames: $'''''' out_loc_num_Closed=> num_Closed out_loc_bool_Ok=> bool_Ok
+@@CustomNote: '0 closed and Ok.'
+SET bool_Pass TO bool_Ok = True AND num_Closed = 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Close_Applications - empty list -> 0''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% Closed=%num_Closed%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Write_Run_Report, Send_Notification and To_Json_Text.'
+**REGION 8. Write_Run_Report, Send_Notification, To_Json_Text
+# --- Write_Run_Report : 2 result rows -> CSV read back with 2 rows, HTML with the reason escaped ---
+@@CustomNote: 'Two result rows ; the reason contains a < to check the HTML escaping.'
+Variables.CreateNewDatatable InputTable: { ^['RunId', 'ItemKey', 'Outcome', 'Attempts', 'Reason', 'Result', 'StartedAt', 'DurationMs'], ['R1', 'T-001', 'SUCCESS', 1, '', 'receipt-T-001.txt', '2026-10-18 05:00:00', '12'], ['R1', 'T-002', 'BUSINESS_EXCEPTION', 1, 'Amount <= 0', '', '2026-10-18 05:00:01', '3'] } DataTable=> tbl_ResultsFixture
+@@CustomNote: 'Writes the CSV and the HTML of the fixture.'
+CALL Write_Run_Report in_loc_tbl_Results: tbl_ResultsFixture in_loc_txt_ReportsFolder: txt_ReportsFolder in_loc_txt_RunId: $'''R1''' in_loc_txt_Title: $'''PAD_REF Tests''' out_loc_txt_CsvFile=> txt_CsvFile out_loc_txt_HtmlFile=> txt_HtmlFile out_loc_txt_Html=> txt_Html out_loc_bool_Ok=> bool_Ok
+@@CustomNote: '-1 until the CSV is read back.'
+SET num_RowsBack TO -1
+@@CustomNote: 'Reads the CSV only when it was written.'
+IF bool_Ok = True THEN
+    @@CustomNote: 'Read back like Excel or Power BI would read it.'
+    File.ReadFromCSVFile.ReadCSV CSVFile: txt_CsvFile Encoding: File.CSVEncoding.UTF8 TrimFields: True FirstLineContainsColumnNames: True ColumnsSeparator: File.CSVColumnsSeparator.Semicolon CSVTable=> tbl_Back
+    @@CustomNote: 'Rows found in the CSV.'
+    SET num_RowsBack TO tbl_Back.RowsCount
+END
+@@CustomNote: 'The < must be escaped, or the HTML table breaks.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_Html TextToFind: $'''Amount &lt;= 0''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'Checked on disk.'
+SET bool_FileOk TO False
+@@CustomNote: 'The HTML file exists.'
+IF (File.IfFile.Exists File: txt_HtmlFile) THEN
+    @@CustomNote: 'File found on disk.'
+    SET bool_FileOk TO True
+END
+@@CustomNote: 'CSV rows, escaping and HTML file all right.'
+SET bool_Pass TO bool_Ok = True AND num_RowsBack = 2 AND num_Position >= 0 AND bool_FileOk = True
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Write_Run_Report - CSV 2 rows read back, HTML file written, reason escaped''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Ok=%bool_Ok% RowsBack=%num_RowsBack% Position=%num_Position% HtmlExists=%bool_FileOk% Csv=%txt_CsvFile%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Send_Notification : channel NONE -> nothing sent, detail says disabled ---
+@@CustomNote: 'Channel none in lower case : disabled, nothing sent, Outlook never started.'
+CALL Send_Notification in_loc_txt_Channel: $'''none''' in_loc_txt_To: $'''someone@example.com''' in_loc_txt_Account: $'''''' in_loc_txt_Subject: $'''Test''' in_loc_txt_HtmlBody: $'''<p>Test</p>''' out_loc_bool_Sent=> bool_Sent out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'The detail must say disabled.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_Detail TextToFind: $'''disabled''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'Not sent and explained.'
+SET bool_Pass TO bool_Sent = False AND num_Position >= 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Send_Notification - NONE -> not sent, disabled''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Sent=%bool_Sent% Detail=%txt_Detail%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- Send_Notification - recovery : OUTLOOK_DRAFT without recipient -> not sent, Outlook never started ---
+@@CustomNote: 'Recovery case : a channel without recipient must not open Outlook.'
+CALL Send_Notification in_loc_txt_Channel: $'''OUTLOOK_DRAFT''' in_loc_txt_To: $'''''' in_loc_txt_Account: $'''''' in_loc_txt_Subject: $'''Test''' in_loc_txt_HtmlBody: $'''<p>Test</p>''' out_loc_bool_Sent=> bool_Sent out_loc_txt_Detail=> txt_Detail
+@@CustomNote: 'The detail names the missing setting.'
+Text.ParseText.ParseForFirstOccurrence Text: txt_Detail TextToFind: $'''NotifyTo is empty''' StartingPosition: 0 IgnoreCase: False OccurrencePosition=> num_Position
+@@CustomNote: 'Not sent and explained.'
+SET bool_Pass TO bool_Sent = False AND num_Position >= 0
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''Send_Notification - recovery : no recipient -> not sent''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''Sent=%bool_Sent% Detail=%txt_Detail%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+# --- To_Json_Text : backslashes and double quotes escaped -> the JSON reads back the original text ---
+@@CustomNote: 'Backslashes and quotes : the two characters that break a JSON value.'
+SET txt_Original TO $'''C:\\RPA\\PAD_REF \"quoted\"'''
+@@CustomNote: 'Escapes the text for a JSON string.'
+CALL To_Json_Text in_loc_txt_Text: txt_Original out_loc_txt_Json=> txt_JsonValue
+@@CustomNote: 'Reset by the handler if the JSON is invalid.'
+SET bool_JsonOk TO True
+@@CustomNote: 'Builds a JSON with the escaped value and parses it : the real proof of the escaping.'
+Variables.ConvertJsonToCustomObject Json: $'''{\"value\": \"%txt_JsonValue%\"}''' CustomObject=> obj_Json
+ON ERROR
+    SET bool_JsonOk TO False
+END
+@@CustomNote: 'Reset first.'
+SET txt_ReadBack TO $''''''
+@@CustomNote: 'Read only when the JSON parsed.'
+IF bool_JsonOk = True THEN
+    @@CustomNote: 'The value read back from the JSON.'
+    SET txt_ReadBack TO obj_Json['value']
+END
+@@CustomNote: 'Valid JSON and the original text read back.'
+SET bool_Pass TO bool_JsonOk = True AND txt_ReadBack = txt_Original
+@@CustomNote: 'Records the result of the case.'
+CALL Verify in_loc_txt_Case: $'''To_Json_Text - backslashes and quotes escaped, JSON reads back the original''' in_loc_bool_Ok: bool_Pass in_loc_txt_Detail: $'''JsonOk=%bool_JsonOk% Escaped=%txt_JsonValue% ReadBack=%txt_ReadBack%''' in_loc_txt_ReportIn: txt_Report in_loc_txt_ReportFile: txt_TestReportFile out_loc_txt_Report=> txt_Report
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'Total : one line with the number of PASS and FAIL at the end of the report.'
+**REGION 9. Total : PASS and FAIL counted from the report
+@@CustomNote: 'Counts the PASS lines of the report.'
+Text.ParseText.RegexParse Text: txt_Report TextToFind: $'''(?m)^PASS - ''' StartingPosition: 0 IgnoreCase: False Matches=> lst_Pass
+@@CustomNote: 'Counts the FAIL lines of the report.'
+Text.ParseText.RegexParse Text: txt_Report TextToFind: $'''(?m)^FAIL - ''' StartingPosition: 0 IgnoreCase: False Matches=> lst_Fail
+@@CustomNote: 'The line a person reads first.'
+SET txt_Total TO $'''TOTAL : %lst_Pass.Count% PASS, %lst_Fail.Count% FAIL'''
+@@CustomNote: 'Appended to the report file : the proof of the test run.'
+File.WriteText File: txt_TestReportFile TextToWrite: txt_Total AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+**ENDREGION

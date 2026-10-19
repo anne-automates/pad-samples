@@ -1,0 +1,25 @@
+﻿PASS - Init_Run - nested project folder created, run id and log file set
+PASS - Init_Run - recovery : empty project folder -> Ok = False
+PASS - Write_Log - INFO line written at minimum level INFO
+PASS - Write_Log - DEBUG line filtered at minimum level INFO
+PASS - Write_Log - recovery : unreachable log file -> FAILED
+PASS - Load_Config - default Config.csv written, DEV -> 11 rows, MaxRetryNumber 2
+PASS - Load_Config - PROD override -> 12 rows, MaxRetryNumber 1
+PASS - Load_Config - recovery : MaxRetryNumber abc -> Ok = False, detail names the key
+PASS - Load_Config - recovery : wrong header -> Ok = False
+PASS - Load_Config - recovery : unreachable config file -> Ok = False
+PASS - Get_Work_Items - demo file created and read -> 6 items, fifth INV:005
+PASS - Get_Work_Items - recovery : missing file without demo -> Ok = False
+PASS - Process_Item - T-001 valid -> SUCCESS, receipt written
+PASS - Process_Item - T-002 amount -10 -> BUSINESS_EXCEPTION
+PASS - Process_Item - T-003 amount abc -> BUSINESS_EXCEPTION
+PASS - Process_Item - T-004 invalid e-mail -> BUSINESS_EXCEPTION
+PASS - Process_Item - T:005 refused file name -> SYSTEM_EXCEPTION with its message
+PASS - Take_Evidence - PNG written, key T:005 -> T_005
+PASS - Close_Applications - running PING closed, absent name ignored -> 1
+PASS - Close_Applications - empty list -> 0
+PASS - Write_Run_Report - CSV 2 rows read back, HTML file written, reason escaped
+PASS - Send_Notification - NONE -> not sent, disabled
+PASS - Send_Notification - recovery : no recipient -> not sent
+PASS - To_Json_Text - backslashes and quotes escaped, JSON reads back the original
+TOTAL : 24 PASS, 0 FAIL

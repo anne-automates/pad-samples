@@ -1,0 +1,85 @@
+# local subflow: Process_Item
+# inputs: in_loc_row_Item, in_loc_txt_OutputFolder, in_loc_num_Attempt
+# outputs: out_loc_txt_ItemKey, out_loc_txt_Outcome, out_loc_txt_Reason, out_loc_txt_Result
+# Process_Item: ONE transaction. A rule broken by the data is a BUSINESS_EXCEPTION (final, never retried) ;
+# an unexpected failure of an action is a SYSTEM_EXCEPTION (Main closes the applications and retries). Never throws.
+# TEMPLATE: replace regions 2.1 (business rules) and 2.2 (application steps) by the real process, and the key column read in region 1 ; keep the rest of regions 1, 2 and 3.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Every output is set before the first action that can fail : Main always receives a key and an outcome.'
+**REGION 1. Outputs : initialised before the first action that can fail
+@@CustomNote: 'The item key, read first : logs, report and screenshots name the item even if everything else fails.'
+SET out_loc_txt_ItemKey TO $'''%in_loc_row_Item['Reference']%'''
+@@CustomNote: 'SUCCESS unless a rule or an action says otherwise below.'
+SET out_loc_txt_Outcome TO $'''SUCCESS'''
+@@CustomNote: 'Empty for a success ; the reason of an exception otherwise.'
+SET out_loc_txt_Reason TO $''''''
+@@CustomNote: 'What the transaction produced (a file, a draft, an id), quoted in the log and the report.'
+SET out_loc_txt_Result TO $''''''
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Transaction : one item, protected by a BLOCK so a failing action becomes an outcome, never a crash.'
+**REGION 2. Transaction : any unexpected error inside is a system exception
+@@CustomNote: 'Its handler only sets SYSTEM_EXCEPTION : Main decides to retry, to give up or to stop the run.'
+BLOCK Transaction
+ON BLOCK ERROR
+    SET out_loc_txt_Outcome TO $'''SYSTEM_EXCEPTION'''
+END
+    @@regionColor: '#BDD7EE'
+    @@CustomNote: 'Business rules : TEMPLATE - replace with your rules ; each broken rule gives a business exception and its reason.'
+    **REGION 2.1 Business rules : a rule broken by the data is a business exception, never retried
+    @@CustomNote: 'Rule 1 : the amount must be a number ; its own handler turns a failed conversion into a business exception.'
+    Text.ToNumber Text: in_loc_row_Item['Amount'] Number=> num_Amount
+    ON ERROR
+        SET out_loc_txt_Outcome TO $'''BUSINESS_EXCEPTION'''
+        SET out_loc_txt_Reason TO $'''Amount is not a number: %in_loc_row_Item['Amount']%'''
+    END
+    @@CustomNote: 'A broken rule ends the transaction at once : the application steps never run on bad data.'
+    IF out_loc_txt_Outcome = $'''BUSINESS_EXCEPTION''' THEN
+        @@CustomNote: 'Leaves with the business exception and its reason.'
+        EXIT FUNCTION
+    END
+    @@CustomNote: 'Rule 2 : a negative or zero amount is a data error, not a technical one.'
+    IF num_Amount <= 0 THEN
+        @@CustomNote: 'Business exception : never retried, the business team corrects the data.'
+        SET out_loc_txt_Outcome TO $'''BUSINESS_EXCEPTION'''
+        @@CustomNote: 'The reason quotes the value : the business user sees what is wrong.'
+        SET out_loc_txt_Reason TO $'''Amount must be positive: %num_Amount%'''
+        @@CustomNote: 'Leaves before the application steps.'
+        EXIT FUNCTION
+    END
+    @@CustomNote: 'Rule 3 : the e-mail must look like an e-mail (one @, a dot in the domain).'
+    Text.ParseText.RegexParseForFirstOccurrence Text: in_loc_row_Item['Email'] TextToFind: $'''^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$''' StartingPosition: 0 IgnoreCase: True Match=> txt_EmailMatch OccurrencePosition=> _num_EmailPosition
+    @@CustomNote: 'No match : the e-mail is not valid.'
+    IF txt_EmailMatch = $'''''' THEN
+        @@CustomNote: 'Business exception.'
+        SET out_loc_txt_Outcome TO $'''BUSINESS_EXCEPTION'''
+        @@CustomNote: 'The reason quotes the value.'
+        SET out_loc_txt_Reason TO $'''Email is not valid: %in_loc_row_Item['Email']%'''
+        @@CustomNote: 'Leaves before the application steps.'
+        EXIT FUNCTION
+    END
+    **ENDREGION
+    @@regionColor: '#BDD7EE'
+    @@CustomNote: 'Application steps : TEMPLATE - replace with the real work in your applications ; no handler here on purpose.'
+    **REGION 2.2 Application steps : the work itself - the demo writes one receipt per item
+    # No handler here on purpose : a failed action is a system exception (the demo item INV:005 is a file name Windows refuses)
+    @@CustomNote: 'The demo writes one receipt per item ; a key Windows refuses in a file name triggers the system exception path.'
+    SET txt_ReceiptFile TO $'''%in_loc_txt_OutputFolder%\\receipt-%out_loc_txt_ItemKey%.txt'''
+    @@CustomNote: 'A failure here (file name, locked file, application down) jumps to the BLOCK handler : SYSTEM_EXCEPTION, retried by Main.'
+    File.WriteText File: txt_ReceiptFile TextToWrite: $'''Receipt %out_loc_txt_ItemKey% | customer %in_loc_row_Item['Customer']% | amount %num_Amount% | attempt %in_loc_num_Attempt%''' AppendNewLine: True IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.UTF8
+    @@CustomNote: 'The result is quoted in the log and the report.'
+    SET out_loc_txt_Result TO txt_ReceiptFile
+    **ENDREGION
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'System exception : the reason must say which action failed and why.'
+**REGION 3. System exception : the message of the failed action, on one line, for the log and the report
+@@CustomNote: 'Only after a failure caught by the BLOCK.'
+IF out_loc_txt_Outcome = $'''SYSTEM_EXCEPTION''' THEN
+    @@CustomNote: 'Get last error : subflow, action number, action name, error message and details.'
+    ERROR => txt_LastError
+    @@CustomNote: 'On one line : the reason goes into a log line and a CSV cell.'
+    Text.Replace.ReplaceTextWithRegex Text: txt_LastError TextToFind: $'''\\s*[\\r\\n]+\\s*''' IgnoreCase: False ReplaceWith: $''' / ''' ActivateEscapeSequences: False Result=> out_loc_txt_Reason
+END
+**ENDREGION

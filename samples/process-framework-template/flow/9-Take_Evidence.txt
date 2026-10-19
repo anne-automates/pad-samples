@@ -1,0 +1,23 @@
+# local subflow: Take_Evidence
+# inputs: in_loc_txt_EvidenceFolder, in_loc_txt_RunId, in_loc_txt_ItemKey, in_loc_num_Attempt
+# outputs: out_loc_txt_File, out_loc_bool_Ok
+# Take_Evidence: a PNG of the primary screen, named after the run, the item and the attempt (characters Windows refuses become _). Never throws.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'The file name is built before the capture : a failed capture still returns the name it tried.'
+**REGION 1. Outputs : the file name is built before the capture
+@@CustomNote: 'Optimistic flag, set to False if the capture fails.'
+SET out_loc_bool_Ok TO True
+@@CustomNote: 'Characters Windows refuses in a file name become _ : the item INV:005 gives INV_005.'
+Text.Replace.ReplaceTextWithRegex Text: in_loc_txt_ItemKey TextToFind: $'''[^A-Za-z0-9_-]''' IgnoreCase: False ReplaceWith: $'''_''' ActivateEscapeSequences: False Result=> txt_SafeKey
+@@CustomNote: 'run id + item + attempt : each attempt of each run has its own screenshot, nothing is overwritten.'
+SET out_loc_txt_File TO $'''%in_loc_txt_EvidenceFolder%\\%in_loc_txt_RunId%_%txt_SafeKey%_attempt%in_loc_num_Attempt%.png'''
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'Output : what was on screen when the action failed.'
+**REGION 2. Output : the capture
+@@CustomNote: 'Primary screen in PNG : sharp text, small files ; a failed capture never stops the robot.'
+Workstation.TakeScreenshot.TakeScreenshotOfPrimaryScreenAndSaveToFile File: out_loc_txt_File ImageFormat: System.ImageFormat.Png
+ON ERROR
+    SET out_loc_bool_Ok TO False
+END
+**ENDREGION

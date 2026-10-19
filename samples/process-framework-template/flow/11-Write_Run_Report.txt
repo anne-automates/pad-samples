@@ -1,0 +1,66 @@
+# local subflow: Write_Run_Report
+# inputs: in_loc_tbl_Results, in_loc_txt_ReportsFolder, in_loc_txt_RunId, in_loc_txt_Title
+# outputs: out_loc_txt_CsvFile, out_loc_txt_HtmlFile, out_loc_txt_Html, out_loc_bool_Ok
+# Write_Run_Report: the result of every item as CSV (one row per item, for Excel or Power BI) and as an HTML page, also the body of the notification. Never throws.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Every output is set before the first action that can fail.'
+**REGION 1. Outputs : initialised before the first action that can fail
+@@CustomNote: 'Optimistic flag, set to False if a file cannot be written.'
+SET out_loc_bool_Ok TO True
+@@CustomNote: 'One CSV per run, named after the run id : runs never overwrite each other.'
+SET out_loc_txt_CsvFile TO $'''%in_loc_txt_ReportsFolder%\\run-%in_loc_txt_RunId%.csv'''
+@@CustomNote: 'The same name for the HTML page.'
+SET out_loc_txt_HtmlFile TO $'''%in_loc_txt_ReportsFolder%\\run-%in_loc_txt_RunId%.html'''
+@@CustomNote: 'Empty until the page is built.'
+SET out_loc_txt_Html TO $''''''
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Guard : without a folder the report would land at the root of the disk.'
+**REGION 2. Guard : a reports folder is required
+@@CustomNote: 'Init_Run failed before setting the folder.'
+IF in_loc_txt_ReportsFolder = $'''''' THEN
+    @@CustomNote: 'Refused.'
+    SET out_loc_bool_Ok TO False
+    @@CustomNote: 'Leaves with Ok = False.'
+    EXIT FUNCTION
+END
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Processing : one HTML row per item, the outcome coloured, for the people who read the report.'
+**REGION 3. Processing : one HTML row per item, the outcome coloured
+@@CustomNote: 'The rows are accumulated, then inserted once into the page.'
+SET txt_Rows TO $''''''
+@@CustomNote: 'One pass per item of the run.'
+LOOP FOREACH row_Result IN in_loc_tbl_Results
+    @@CustomNote: 'Green by default : most rows of a healthy run are successes, the exceptions stand out.'
+    SET txt_Color TO $'''#C6E0B4'''
+    @@CustomNote: 'A business exception : the business team must correct the data.'
+    IF row_Result['Outcome'] = $'''BUSINESS_EXCEPTION''' THEN
+        @@CustomNote: 'Amber : the rows the business team acts on.'
+        SET txt_Color TO $'''#FFE699'''
+    ELSE IF row_Result['Outcome'] = $'''SYSTEM_EXCEPTION''' THEN
+        @@CustomNote: 'Red : the rows the support team looks at (screenshots in Evidence).'
+        SET txt_Color TO $'''#F4B6B6'''
+    END
+    @@CustomNote: 'A < in a reason would break the HTML table : it is escaped.'
+    Text.Replace.ReplaceText Text: $'''%row_Result['Reason']%''' TextToFind: $'''<''' IgnoreCase: False ReplaceWith: $'''&lt;''' ActivateEscapeSequences: False ComparisonType: Text.TextComparisonType.Ordinal Result=> txt_Reason
+    @@CustomNote: 'One row : item, outcome, attempts, reason, duration.'
+    SET txt_Rows TO $'''%txt_Rows%<tr><td>%row_Result['ItemKey']%</td><td style=\"background:%txt_Color%\">%row_Result['Outcome']%</td><td>%row_Result['Attempts']%</td><td>%txt_Reason%</td><td>%row_Result['DurationMs']%</td></tr>'''
+END
+@@CustomNote: 'The whole page, also used as the body of the notification e-mail.'
+SET out_loc_txt_Html TO $'''<html><body style=\"font-family:Segoe UI,Arial,sans-serif\"><h2>%in_loc_txt_Title%</h2><p>Run %in_loc_txt_RunId% - %in_loc_tbl_Results.RowsCount% item(s)</p><table border=\"1\" cellpadding=\"4\" style=\"border-collapse:collapse\"><tr><th>Item</th><th>Outcome</th><th>Attempts</th><th>Reason</th><th>Duration (ms)</th></tr>%txt_Rows%</table></body></html>'''
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'Output : the CSV for Excel or Power BI, the HTML page for people.'
+**REGION 4. Output : the CSV and the HTML page
+@@CustomNote: 'Separator ; and UTF-8 with headers : opens in Excel and loads in Power BI as is.'
+File.WriteToCSVFile.WriteCSV VariableToWrite: in_loc_tbl_Results CSVFile: out_loc_txt_CsvFile CsvFileEncoding: File.CSVEncoding.UTF8 IncludeColumnNames: True IfFileExists: File.IfFileExists.Overwrite ColumnsSeparator: File.CSVColumnsSeparator.Semicolon
+ON ERROR
+    SET out_loc_bool_Ok TO False
+END
+@@CustomNote: 'The page next to the CSV ; a failure is reported, not thrown.'
+File.WriteText File: out_loc_txt_HtmlFile TextToWrite: out_loc_txt_Html AppendNewLine: False IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.UTF8
+ON ERROR
+    SET out_loc_bool_Ok TO False
+END
+**ENDREGION

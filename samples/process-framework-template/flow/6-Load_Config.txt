@@ -1,0 +1,156 @@
+# local subflow: Load_Config
+# inputs: in_loc_txt_ConfigFile, in_loc_txt_Environment
+# outputs: out_loc_txt_ConfigJson, out_loc_num_SettingsRead, out_loc_bool_Ok, out_loc_txt_Detail
+# Load_Config: defaults, then the rows of Config.csv for every environment ('*'), then the rows of the current environment (they win).
+# Every framework key always exists, so Main never reads a missing key. A missing Config.csv is created with the defaults. Never throws.
+# TEMPLATE: add the default of every business setting in region 2, so the key exists even when Config.csv does not list it.
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Every output is set before the first action that can fail.'
+**REGION 1. Outputs : initialised before the first action that can fail
+@@CustomNote: 'An empty JSON object until the settings are built.'
+SET out_loc_txt_ConfigJson TO $'''{}'''
+@@CustomNote: 'Number of Config.csv rows applied : the tests check it to prove the environment logic.'
+SET out_loc_num_SettingsRead TO 0
+@@CustomNote: 'Optimistic flag, set to False by any failure below.'
+SET out_loc_bool_Ok TO True
+@@CustomNote: 'Explains a refusal in words a maker understands.'
+SET out_loc_txt_Detail TO $''''''
+@@CustomNote: 'Upper case : dev, Dev and DEV select the same rows.'
+Text.ChangeCase Text: in_loc_txt_Environment NewCase: Text.CaseOption.UpperCase Result=> txt_Environment
+**ENDREGION
+@@regionColor: '#57FFE1'
+@@CustomNote: 'Defaults : every key Main reads exists, even when Config.csv does not list it ; no missing key can stop the flow.'
+**REGION 2. Defaults : every key Main reads, with its value when Config.csv is silent
+@@CustomNote: 'An empty object, filled key by key.'
+SET obj_Config TO {{ }}
+@@CustomNote: 'Retries after a system exception : 2 means up to 3 attempts per item.'
+SET obj_Config['MaxRetryNumber'] TO $'''2'''
+@@CustomNote: 'Circuit breaker : 5 system exceptions in a row stop the run.'
+SET obj_Config['MaxConsecutiveSystemExceptions'] TO $'''5'''
+@@CustomNote: 'Seconds to wait before a retry.'
+SET obj_Config['RetryDelaySeconds'] TO $'''2'''
+@@CustomNote: 'Screenshots on by default : the first thing support asks for.'
+SET obj_Config['ScreenshotOnSystemException'] TO $'''True'''
+@@CustomNote: 'No application closed by default : each process lists its own.'
+SET obj_Config['ProcessesToClose'] TO $''''''
+@@CustomNote: 'Name of the work items file in the Input folder.'
+SET obj_Config['InputFile'] TO $'''work-items.csv'''
+@@CustomNote: 'Demo on in the template so it runs out of the box ; a real process sets it to False.'
+SET obj_Config['CreateDemoInput'] TO $'''True'''
+@@CustomNote: 'No e-mail by default : a template must never write to anyone by surprise.'
+SET obj_Config['NotifyChannel'] TO $'''NONE'''
+@@CustomNote: 'No recipient by default.'
+SET obj_Config['NotifyTo'] TO $''''''
+@@CustomNote: 'No sending account by default.'
+SET obj_Config['NotifyAccount'] TO $''''''
+@@CustomNote: 'Successful runs are quiet by default.'
+SET obj_Config['NotifyOnSuccess'] TO $'''False'''
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Guard : a missing Config.csv is created with the defaults, so a new process starts with a complete, documented file.'
+**REGION 3. Guard : a missing Config.csv is written with the defaults, editable in Excel (separator ;)
+@@CustomNote: 'Only when the file does not exist : an existing configuration is never overwritten.'
+IF (File.IfFile.DoesNotExist File: in_loc_txt_ConfigFile) THEN
+    @@CustomNote: 'Every setting with its value, its environment (* for all) and a description a maker can read in Excel.'
+    Variables.CreateNewDatatable InputTable: { ^['Name', 'Value', 'Environment', 'Description'], ['MaxRetryNumber', '2', '*', 'Retries of an item after a system exception (attempts = 1 + retries)'], ['MaxConsecutiveSystemExceptions', '5', '*', 'The run stops after this many system exceptions in a row'], ['RetryDelaySeconds', '2', '*', 'Pause before a retry, after the recovery'], ['ScreenshotOnSystemException', 'True', '*', 'Screenshot in the Evidence folder on every system exception'], ['ProcessesToClose', '', '*', 'Process names closed at start, before a retry and at the end, comma separated (EXCEL,msedge)'], ['InputFile', 'work-items.csv', '*', 'Work items file in the Input folder (separator ; and a header line)'], ['CreateDemoInput', 'True', '*', 'Creates a demo work items file when it is missing - set False in a real process'], ['NotifyChannel', 'NONE', '*', 'NONE, OUTLOOK_DRAFT or OUTLOOK_SEND'], ['NotifyTo', '', '*', 'Recipients of the run report'], ['NotifyAccount', '', '*', 'Outlook account that sends the report'], ['NotifyOnSuccess', 'False', '*', 'Also notify when every item succeeded'], ['MaxRetryNumber', '1', 'PROD', 'Example of an environment override - fewer retries in PROD'] } DataTable=> tbl_Defaults
+    @@CustomNote: 'Separator ; and UTF-8 : the file opens correctly in a French or English Excel.'
+    File.WriteToCSVFile.WriteCSV VariableToWrite: tbl_Defaults CSVFile: in_loc_txt_ConfigFile CsvFileEncoding: File.CSVEncoding.UTF8 IncludeColumnNames: True IfFileExists: File.IfFileExists.Overwrite ColumnsSeparator: File.CSVColumnsSeparator.Semicolon
+    ON ERROR
+        SET out_loc_bool_Ok TO False
+        SET out_loc_txt_Detail TO $'''Config file missing and the default one could not be written: %in_loc_txt_ConfigFile%'''
+    END
+    @@CustomNote: 'A configuration that cannot be written cannot be read either.'
+    IF out_loc_bool_Ok = False THEN
+        @@CustomNote: 'Leaves with Ok = False and a detail.'
+        EXIT FUNCTION
+    END
+END
+**ENDREGION
+@@regionColor: '#C6E0B4'
+@@CustomNote: 'Input : the header is checked before any column is read, because a missing column stops a flow and no handler catches it.'
+**REGION 4. Input : the header is checked before any column is read (a missing column stops a flow, no handler catches it)
+@@CustomNote: 'Read as text first, only to check the header.'
+File.ReadTextFromFile.ReadText File: in_loc_txt_ConfigFile Encoding: File.TextFileEncoding.UTF8 Content=> txt_ConfigText
+ON ERROR
+    SET out_loc_bool_Ok TO False
+    SET out_loc_txt_Detail TO $'''Config file could not be read: %in_loc_txt_ConfigFile%'''
+END
+@@CustomNote: 'An unreadable file is refused with its path.'
+IF out_loc_bool_Ok = False THEN
+    @@CustomNote: 'Leaves with Ok = False and a detail.'
+    EXIT FUNCTION
+END
+@@CustomNote: '\\W* skips the byte order mark Excel may write before the first column name.'
+Text.ParseText.RegexParseForFirstOccurrence Text: txt_ConfigText TextToFind: $'''^\\W*Name;Value;Environment''' StartingPosition: 0 IgnoreCase: True Match=> txt_Header OccurrencePosition=> _num_HeaderPosition
+@@CustomNote: 'Wrong header : refused before any row is read.'
+IF txt_Header = $'''''' THEN
+    @@CustomNote: 'Refused.'
+    SET out_loc_bool_Ok TO False
+    @@CustomNote: 'The detail tells exactly what the first line must be.'
+    SET out_loc_txt_Detail TO $'''The first line of %in_loc_txt_ConfigFile% must start with Name;Value;Environment'''
+    @@CustomNote: 'Leaves without reading any column.'
+    EXIT FUNCTION
+END
+@@CustomNote: 'The whole file in one action, as a table.'
+File.ReadFromCSVFile.ReadCSV CSVFile: in_loc_txt_ConfigFile Encoding: File.CSVEncoding.UTF8 TrimFields: True FirstLineContainsColumnNames: True ColumnsSeparator: File.CSVColumnsSeparator.Semicolon CSVTable=> tbl_Config
+ON ERROR
+    SET out_loc_bool_Ok TO False
+    SET out_loc_txt_Detail TO $'''Config file is not a valid CSV: %in_loc_txt_ConfigFile%'''
+END
+@@CustomNote: 'A file that is not a CSV is refused.'
+IF out_loc_bool_Ok = False THEN
+    @@CustomNote: 'Leaves with Ok = False and a detail.'
+    EXIT FUNCTION
+END
+**ENDREGION
+@@regionColor: '#D9C3E9'
+@@CustomNote: 'Processing : two passes, so a row of the current environment wins wherever it sits in the file.'
+**REGION 5. Processing : rows for every environment first, then the rows of the current environment, which win
+@@CustomNote: 'First pass : the rows for every environment.'
+LOOP FOREACH row_Setting IN tbl_Config
+    @@CustomNote: 'Read as text : an empty cell must not stop the flow.'
+    SET txt_RowEnvironment TO $'''%row_Setting['Environment']%'''
+    @@CustomNote: '* or empty means every environment.'
+    IF txt_RowEnvironment = $'''*''' OR txt_RowEnvironment = $'''''' THEN
+        @@CustomNote: 'The setting name, as text.'
+        SET txt_Key TO $'''%row_Setting['Name']%'''
+        @@CustomNote: 'Dynamic key : any setting of the file becomes a key, business settings included.'
+        SET obj_Config[txt_Key] TO $'''%row_Setting['Value']%'''
+        @@CustomNote: 'Counted for the tests.'
+        SET out_loc_num_SettingsRead TO out_loc_num_SettingsRead + 1
+    END
+END
+@@CustomNote: 'Second pass : the rows of the current environment override the common ones.'
+LOOP FOREACH row_Setting IN tbl_Config
+    @@CustomNote: 'Upper case, like the environment received.'
+    Text.ChangeCase Text: $'''%row_Setting['Environment']%''' NewCase: Text.CaseOption.UpperCase Result=> txt_RowEnvironment
+    @@CustomNote: 'Only the rows of this environment.'
+    IF txt_RowEnvironment = txt_Environment THEN
+        @@CustomNote: 'The setting name, as text.'
+        SET txt_Key TO $'''%row_Setting['Name']%'''
+        @@CustomNote: 'Replaces the common value.'
+        SET obj_Config[txt_Key] TO $'''%row_Setting['Value']%'''
+        @@CustomNote: 'Counted for the tests.'
+        SET out_loc_num_SettingsRead TO out_loc_num_SettingsRead + 1
+    END
+END
+**ENDREGION
+@@regionColor: '#F4B6B6'
+@@CustomNote: 'Guard : the numbers are checked here, so Main converts them without a handler.'
+**REGION 6. Guard : numeric settings are numbers, so Main converts them without a handler
+@@CustomNote: 'The three settings Main converts to numbers.'
+LOOP FOREACH txt_NumericKey IN ['MaxRetryNumber', 'MaxConsecutiveSystemExceptions', 'RetryDelaySeconds']
+    @@CustomNote: 'A text in place of a number is caught here, with the name of the key in the detail.'
+    Text.ToNumber Text: obj_Config[txt_NumericKey] Number=> _num_Checked
+    ON ERROR
+        SET out_loc_bool_Ok TO False
+        SET out_loc_txt_Detail TO $'''Setting %txt_NumericKey% is not a number: %obj_Config[txt_NumericKey]%'''
+    END
+END
+**ENDREGION
+@@regionColor: '#FFD966'
+@@CustomNote: 'Output : the settings leave as JSON text, the type that crosses the boundary of a local subflow.'
+**REGION 7. Output : the effective settings as JSON text (a text crosses the boundary of a local subflow)
+@@CustomNote: 'Main turns the JSON back into an object, once.'
+Variables.ConvertCustomObjectToJson CustomObject: obj_Config Json=> out_loc_txt_ConfigJson
+**ENDREGION
